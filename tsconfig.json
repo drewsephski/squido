@@ -1,0 +1,23 @@
+{
+	"extends": "./tsconfig.base.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"paths": {
+			"*": ["./*"],
+			"@drewsepsi/squido-ai": ["./packages/ai/src/index.ts"],
+			"@drewsepsi/squido-ai/oauth": ["./packages/ai/src/oauth.ts"],
+			"@drewsepsi/squido-ai/*": ["./packages/ai/src/*.ts", "./packages/ai/src/providers/*.ts"],
+			"@drewsepsi/squido-ai/dist/*": ["./packages/ai/src/*"],
+			"@drewsepsi/squido-agent-core": ["./packages/agent/src/index.ts"],
+			"@drewsepsi/squido-agent-core/*": ["./packages/agent/src/*"],
+			"@drewsepsi/squido-cli": ["./packages/cli/src/index.ts"],
+			"@drewsepsi/squido-cli/hooks": ["./packages/cli/src/core/hooks/index.ts"],
+			"@drewsepsi/squido-cli/*": ["./packages/cli/src/*"],
+			"typebox": ["./node_modules/typebox"],
+			"@drewsepsi/squido-tui": ["./packages/tui/src/index.ts"],
+			"@drewsepsi/squido-tui/*": ["./packages/tui/src/*"]
+		}
+	},
+	"include": ["packages/*/src/**/*", "packages/*/test/**/*", "packages/cli/examples/**/*"],
+	"exclude": ["**/dist/**", "packages/cli/examples/extensions/gondolin/**"]
+}

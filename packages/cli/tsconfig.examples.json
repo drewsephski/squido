@@ -1,0 +1,16 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"paths": {
+			"@drewsepsi/squido-cli": ["./src/index.ts"],
+			"@drewsepsi/squido-cli/hooks": ["./src/core/hooks/index.ts"],
+			"@drewsepsi/squido-tui": ["../tui/src/index.ts"],
+			"@drewsepsi/squido-ai": ["../ai/src/index.ts"],
+			"typebox": ["../../node_modules/typebox"]
+		},
+		"skipLibCheck": true
+	},
+	"include": ["examples/**/*.ts"],
+	"exclude": ["node_modules", "dist"]
+}
