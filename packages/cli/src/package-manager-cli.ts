@@ -331,7 +331,7 @@ function printSelfUpdateUnavailable(npmCommand?: string[], updatePackageName = P
 	const entrypoint = process.argv[1];
 	if (entrypoint) {
 		console.error("");
-		console.error(`Location of pi executable: ${entrypoint}`);
+		console.error(`Location of squido executable: ${entrypoint}`);
 	}
 }
 

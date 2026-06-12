@@ -31,6 +31,7 @@ compaction-results/
 .opencode/
 syntax.jsonl
 out.jsonl
+*.tgz
 squido-*.html
 out.html
 todo.md

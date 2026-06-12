@@ -673,7 +673,7 @@ export class InteractiveMode {
 			);
 			const onboarding = theme.fg(
 				"dim",
-				`Pi can explain its own features and look up its docs. Ask it how to use or extend Pi.`,
+				`Squido can explain its own features and look up its docs. Ask it how to use or extend Squido.`,
 			);
 			this.builtInHeader = new ExpandableText(
 				() => `${logo}\n${compactInstructions}\n${compactOnboarding}\n\n${onboarding}`,
@@ -883,7 +883,7 @@ export class InteractiveMode {
 		}
 
 		if (extendedKeysFormat === "xterm") {
-			return "tmux extended-keys-format is xterm. Pi works best with csi-u. Add `set -g extended-keys-format csi-u` to ~/.tmux.conf and restart tmux.";
+			return "tmux extended-keys-format is xterm. Squido works best with csi-u. Add `set -g extended-keys-format csi-u` to ~/.tmux.conf and restart tmux.";
 		}
 
 		return undefined;
@@ -3407,7 +3407,7 @@ export class InteractiveMode {
 		try {
 			this.ui.stop();
 		} catch {}
-		console.error("pi exiting due to uncaughtException:");
+		console.error("squido exiting due to uncaughtException:");
 		console.error(error);
 		process.exit(1);
 	}

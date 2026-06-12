@@ -2,8 +2,6 @@
 
 A coding agent CLI with read, bash, edit, write tools and session management.
 
-Forked from [Pi](https://github.com/earendil-works/pi) by Mario Zechner.
-
 ## Packages
 
 | Package | Description |
