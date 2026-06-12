@@ -1,0 +1,228 @@
+/* ========== Design Tokens ========== */
+:root {
+	/* Surfaces — deep ocean, not flat gray */
+	--bg: #080b10;
+	--surface: #0e1319;
+	--surface-hover: #141b24;
+	--surface-raised: #161d26;
+
+	/* Text */
+	--ink: #e8edf2;
+	--ink-muted: #8b95a5;
+	--ink-dim: #5c6675;
+
+	/* Brand — warm amber from Squido identity */
+	--primary: #f29a3a;
+	--primary-muted: #c47a2e;
+	--primary-bright: #ffb35c;
+
+	/* Accent — restrained teal undertone */
+	--accent: #3d8b8b;
+	--accent-muted: #2a5f5f;
+
+	/* Borders */
+	--border: #1e2733;
+	--border-hover: #2a3544;
+
+	/* Feedback */
+	--success: #4ade80;
+	--code-bg: #0a0f15;
+
+	/* Glow — static, not animated */
+	--glow-primary: rgb(242 154 58 / 0.06);
+	--glow-accent: rgb(61 139 139 / 0.04);
+
+	/* Typography */
+	--font-display: "Syne", system-ui, sans-serif;
+	--font-body: "Source Sans 3", system-ui, sans-serif;
+	--font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+	/* Spacing */
+	--space-xs: 0.25rem;
+	--space-sm: 0.5rem;
+	--space-md: 1rem;
+	--space-lg: 2rem;
+	--space-xl: 4rem;
+	--space-2xl: 7rem;
+
+	/* Radii */
+	--radius-sm: 4px;
+	--radius-md: 8px;
+	--radius-lg: 12px;
+
+	/* Shadows */
+	--shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+	--shadow-md: 0 8px 24px rgb(0 0 0 / 0.35);
+	--shadow-lg: 0 24px 64px rgb(0 0 0 / 0.45);
+
+	/* Transitions */
+	--ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+	--duration-fast: 150ms;
+	--duration-normal: 300ms;
+	--duration-slow: 500ms;
+}
+
+/* ========== Reset ========== */
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+html {
+	scroll-behavior: smooth;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+body {
+	font-family: var(--font-body);
+	font-size: 16px;
+	font-weight: 400;
+	line-height: 1.65;
+	color: var(--ink);
+	background: var(--bg);
+	min-height: 100vh;
+}
+
+body::before {
+	content: "";
+	position: fixed;
+	inset: 0;
+	background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+	opacity: 0.025;
+	pointer-events: none;
+	z-index: 9999;
+}
+
+img,
+svg {
+	display: block;
+	max-width: 100%;
+}
+
+a {
+	color: var(--primary-bright);
+	text-decoration: none;
+	transition: color var(--duration-fast) var(--ease-out);
+}
+
+a:hover {
+	color: var(--primary);
+}
+
+a:focus-visible,
+button:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: 2px;
+}
+
+code {
+	font-family: var(--font-mono);
+	font-size: 0.875em;
+	padding: 0.1em 0.35em;
+	background: var(--code-bg);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-sm);
+}
+
+pre {
+	font-family: var(--font-mono);
+	font-size: 0.875rem;
+	line-height: 1.55;
+	overflow-x: auto;
+}
+
+pre code {
+	padding: 0;
+	background: none;
+	border: none;
+}
+
+::selection {
+	background: var(--primary);
+	color: var(--bg);
+}
+
+/* ========== Utility ========== */
+.container {
+	width: 100%;
+	max-width: 1140px;
+	margin: 0 auto;
+	padding: 0 var(--space-lg);
+}
+
+.text-balance {
+	text-wrap: balance;
+}
+
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+.section-eyebrow {
+	display: block;
+	font-family: var(--font-mono);
+	font-size: 0.6875rem;
+	font-weight: 500;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: var(--accent);
+	margin-bottom: var(--space-md);
+}
+
+/* ========== Section Base ========== */
+.section {
+	padding: var(--space-2xl) 0;
+}
+
+/* ========== Scroll Reveal ========== */
+.reveal {
+	opacity: 0;
+	transform: translateY(20px);
+	transition: opacity 0.8s var(--ease-out), transform 0.8s var(--ease-out);
+}
+
+.reveal.visible {
+	opacity: 1;
+	transform: translateY(0);
+}
+
+.reveal-delay-1 { transition-delay: 80ms; }
+.reveal-delay-2 { transition-delay: 160ms; }
+.reveal-delay-3 { transition-delay: 240ms; }
+.reveal-delay-4 { transition-delay: 320ms; }
+
+@media (prefers-reduced-motion: reduce) {
+	.reveal {
+		opacity: 1;
+		transform: none;
+		transition: none;
+	}
+
+	html {
+		scroll-behavior: auto;
+	}
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 768px) {
+	:root {
+		--space-2xl: 4.5rem;
+		--space-xl: 2rem;
+	}
+
+	.container {
+		padding: 0 var(--space-md);
+	}
+}

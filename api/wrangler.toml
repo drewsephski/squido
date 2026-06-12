@@ -1,0 +1,32 @@
+name = "squido-cloud-api"
+main = "src/index.ts"
+compatibility_date = "2025-04-01"
+compatibility_flags = ["nodejs_compat"]
+
+# ── D1 Database ──────────────────────────────────────────────────────
+[[d1_databases]]
+binding = "DB"
+database_name = "squido-cloud"
+database_id = "90854b40-f60d-4c62-a7e1-1b10b40ac0e5"
+
+# ── R2 Bucket (raw session blob storage) ─────────────────────────────
+[[r2_buckets]]
+binding = "SESSIONS_BUCKET"
+bucket_name = "squido-sessions"
+
+# ── D1 Migrations (run via: npm run migrate:prod) ──────────────────
+# Migration files are in the migrations/ directory and are applied
+# via `wrangler d1 execute squido-cloud --file=migrations/XXXX.sql`
+
+# ── Environment Variables (secrets via `wrangler secret put`, non-sensitive here) ──
+[vars]
+DASHBOARD_URL = "https://app.squidagent.app"
+API_URL = "https://api.squidagent.app"
+
+# ── Production Environment ───────────────────────────────────────────
+[env.production]
+vars = { DASHBOARD_URL = "https://app.squidagent.app", API_URL = "https://api.squidagent.app" }
+
+# ── Staging Environment ──────────────────────────────────────────────
+[env.staging]
+vars = { DASHBOARD_URL = "https://staging.app.squidagent.app", API_URL = "https://staging.api.squidagent.app" }

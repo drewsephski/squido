@@ -1,0 +1,20 @@
+# Squido Cloud API — Local Development Secrets
+# Copy this file to .dev.vars and fill in your values.
+# .dev.vars is gitignored — never commit secrets.
+
+# GitHub OAuth App (create one at https://github.com/settings/developers)
+# Redirect URI: http://localhost:5173/dashboard/auth/callback (for dev)
+#             or https://app.squidagent.app/dashboard/auth/callback (prod)
+GITHUB_CLIENT_ID="your_github_client_id"
+GITHUB_CLIENT_SECRET="your_github_client_secret"
+
+# JWT signing secret (generate with: openssl rand -base64 32)
+JWT_SECRET="your_jwt_secret_here"
+
+# Stripe (optional for billing)
+STRIPE_SECRET_KEY="sk_test_..."
+STRIPE_WEBHOOK_SECRET="whsec_..."
+
+# URLs
+DASHBOARD_URL="http://localhost:5173"
+API_URL="http://localhost:8787"

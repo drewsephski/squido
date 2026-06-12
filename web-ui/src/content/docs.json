@@ -1,0 +1,62 @@
+{
+	"navigation": [
+		{
+			"title": "Start here",
+			"items": [
+				{ "title": "Overview", "path": "index" },
+				{ "title": "Quickstart", "path": "quickstart" },
+				{ "title": "Usage", "path": "usage" },
+				{ "title": "Providers", "path": "providers" },
+				{ "title": "Security", "path": "security" },
+				{ "title": "Settings", "path": "settings" },
+				{ "title": "Keybindings", "path": "keybindings" },
+				{ "title": "Sessions", "path": "sessions" },
+				{ "title": "Compaction", "path": "compaction" },
+				{ "title": "Containerization", "path": "containerization" }
+			]
+		},
+		{
+			"title": "Customization",
+			"items": [
+				{ "title": "Extensions", "path": "extensions" },
+				{ "title": "Skills", "path": "skills" },
+				{ "title": "Prompt Templates", "path": "prompt-templates" },
+				{ "title": "Themes", "path": "themes" },
+				{ "title": "Packages", "path": "packages" },
+				{ "title": "Custom Models", "path": "models" },
+				{ "title": "Custom Providers", "path": "custom-provider" }
+			]
+		},
+		{
+			"title": "Reference",
+			"items": [
+				{ "title": "Session Format", "path": "session-format" }
+			]
+		},
+		{
+			"title": "Programmatic",
+			"items": [
+				{ "title": "SDK", "path": "sdk" },
+				{ "title": "RPC Mode", "path": "rpc" },
+				{ "title": "JSON Events", "path": "json" },
+				{ "title": "TUI Components", "path": "tui" }
+			]
+		},
+		{
+			"title": "Platform",
+			"items": [
+				{ "title": "Windows", "path": "windows" },
+				{ "title": "Termux (Android)", "path": "termux" },
+				{ "title": "tmux", "path": "tmux" },
+				{ "title": "Terminal Setup", "path": "terminal-setup" },
+				{ "title": "Shell Aliases", "path": "shell-aliases" }
+			]
+		},
+		{
+			"title": "Development",
+			"items": [
+				{ "title": "Development Guide", "path": "development" }
+			]
+		}
+	]
+}

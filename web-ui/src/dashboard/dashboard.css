@@ -1,0 +1,149 @@
+/* ========== Auth Loading ========== */
+.auth-loading {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 100vh;
+	color: var(--ink-dim);
+	font-size: 0.9375rem;
+}
+
+/* ========== Login Page ========== */
+.login-page {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	min-height: 100vh;
+	padding: var(--space-lg);
+}
+
+.login-card {
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-lg);
+	padding: var(--space-xl);
+	max-width: 400px;
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+	gap: var(--space-md);
+}
+
+.login-header {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--space-sm);
+}
+
+.login-title {
+	font-family: var(--font-display);
+	font-size: 1.5rem;
+	font-weight: 700;
+	color: var(--ink);
+}
+
+.login-subtitle {
+	font-size: 0.9375rem;
+	color: var(--ink-muted);
+	max-width: 280px;
+}
+
+.login-github-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	width: 100%;
+	justify-content: center;
+	padding: 0.75rem 1.5rem;
+	font-size: 0.9375rem;
+	font-weight: 600;
+}
+
+.login-why-link {
+	background: none;
+	border: none;
+	color: var(--ink-dim);
+	font-size: 0.8125rem;
+	cursor: pointer;
+	text-decoration: underline;
+	text-underline-offset: 2px;
+	padding: 0;
+	font-family: var(--font-body);
+	transition: color var(--duration-fast) var(--ease-out);
+}
+
+.login-why-link:hover {
+	color: var(--primary-bright);
+}
+
+.login-scopes {
+	font-size: 0.75rem;
+	color: var(--ink-dim);
+	max-width: 400px;
+	text-align: center;
+	margin-top: var(--space-lg);
+	line-height: 1.6;
+}
+
+/* ========== Login Modal ========== */
+.login-modal-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgb(0 0 0 / 0.6);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 200;
+	padding: var(--space-lg);
+	backdrop-filter: blur(4px);
+}
+
+.login-modal {
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-lg);
+	padding: var(--space-xl);
+	max-width: 420px;
+	width: 100%;
+	box-shadow: var(--shadow-lg);
+}
+
+.login-modal h2 {
+	font-family: var(--font-display);
+	font-size: 1.25rem;
+	font-weight: 600;
+	margin-bottom: var(--space-md);
+	color: var(--ink);
+}
+
+.login-modal ul {
+	list-style: disc;
+	padding-left: var(--space-lg);
+	margin-bottom: var(--space-lg);
+}
+
+.login-modal li {
+	font-size: 0.9375rem;
+	color: var(--ink-muted);
+	line-height: 1.7;
+}
+
+/* ========== Dashboard Layout ========== */
+.dashboard-layout {
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+}
+
+/* ========== Placeholder Stubs ========== */
+.session-list,
+.session-detail,
+.share-view {
+	padding: var(--space-xl);
+	color: var(--ink-dim);
+	font-size: 0.9375rem;
+}

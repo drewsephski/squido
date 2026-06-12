@@ -4,7 +4,7 @@
 
 Extensions and custom tools can render custom TUI components for interactive user interfaces. This page covers the component system and available building blocks.
 
-**Source:** [`@drewsepsi/squido-tui`](https://github.com/earendil-works/pi-mono/tree/main/packages/tui)
+**Source:** [`@drewsepsi/squido-tui`](https://github.com/drewsephski/squido/tree/main/packages/tui)
 
 ## Component Interface
 

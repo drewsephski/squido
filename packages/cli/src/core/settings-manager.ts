@@ -119,6 +119,10 @@ export interface Settings {
 	sessionDir?: string; // Custom session storage directory (same format as --session-dir CLI flag)
 	httpIdleTimeoutMs?: number; // HTTP header/body idle timeout in milliseconds; 0 disables it
 	websocketConnectTimeoutMs?: number; // WebSocket connect/open handshake timeout in milliseconds; 0 disables it
+	/** Cloud sync settings. Undefined = feature not available (cloud package not installed). */
+	cloud?: {
+		enabled?: boolean; // default: false
+	};
 }
 
 /** Deep merge settings: project/overrides take precedence, nested objects merge recursively */
@@ -1182,6 +1186,16 @@ export class SettingsManager {
 	setWarnings(warnings: WarningSettings): void {
 		this.globalSettings.warnings = { ...warnings };
 		this.markModified("warnings");
+		this.save();
+	}
+
+	getCloudSettings(): NonNullable<Settings["cloud"]> {
+		return { ...(this.settings.cloud ?? {}) };
+	}
+
+	setCloudSettings(cloud: Settings["cloud"]): void {
+		this.globalSettings.cloud = cloud;
+		this.markModified("cloud");
 		this.save();
 	}
 }

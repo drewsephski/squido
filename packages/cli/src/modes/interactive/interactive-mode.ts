@@ -61,6 +61,7 @@ import {
 } from "../../config.ts";
 import { type AgentSession, type AgentSessionEvent, parseSkillBlock } from "../../core/agent-session.ts";
 import { type AgentSessionRuntime, SessionImportFileNotFoundError } from "../../core/agent-session-runtime.ts";
+import { CloudIntegration } from "../../core/cloud/index.ts";
 import type {
 	AutocompleteProviderFactory,
 	EditorFactory,
@@ -92,10 +93,11 @@ import { copyToClipboard } from "../../utils/clipboard.ts";
 import { extensionForImageMimeType, readClipboardImage } from "../../utils/clipboard-image.ts";
 import { parseGitUrl } from "../../utils/git.ts";
 import { getCwdRelativePath } from "../../utils/paths.ts";
-import { getSquidoUserAgent } from "../../utils/squido-user-agent.ts";
 import { killTrackedDetachedChildren } from "../../utils/shell.ts";
+import { getSquidoUserAgent } from "../../utils/squido-user-agent.ts";
 import { ensureTool } from "../../utils/tools-manager.ts";
 import { checkForNewSquidoVersion, type LatestSquidoRelease } from "../../utils/version-check.ts";
+import { openBrowser } from "../../utils/open-browser.ts";
 import { ArminComponent } from "./components/armin.ts";
 import { AssistantMessageComponent } from "./components/assistant-message.ts";
 import { BashExecutionComponent } from "./components/bash-execution.ts";
@@ -341,6 +343,9 @@ export class InteractiveMode {
 
 	// Messages queued while compaction is running
 	private compactionQueuedMessages: CompactionQueuedMessage[] = [];
+
+	// Cloud sync state
+	private cloudIntegration: CloudIntegration | null = null;
 
 	// Shutdown state
 	private shutdownRequested = false;
@@ -613,6 +618,17 @@ export class InteractiveMode {
 		// Both are needed: fd for autocomplete, rg for grep tool and bash commands
 		const [fdPath] = await Promise.all([ensureTool("fd"), ensureTool("rg")]);
 		this.fdPath = fdPath;
+
+		// Initialize cloud sync integration
+		// Uses a getter so settings changes (via /cloud enable) are reflected live
+		const syncStateDir = path.join(getAgentDir(), "cloud-sync-state");
+		this.cloudIntegration = new CloudIntegration({
+			baseUrl: "https://squido-cloud-api.drewsepeczi.workers.dev",
+			authStorage: this.runtimeHost.services.authStorage as import("../../core/cloud/index.ts").AuthStorageLike,
+			sessionManager: this.sessionManager,
+			syncStateDir,
+			isCloudEnabled: () => this.settingsManager.getCloudSettings().enabled === true,
+		});
 
 		if (this.session.scopedModels.length > 0 && (this.options.verbose || !this.settingsManager.getQuietStartup())) {
 			const modelList = this.session.scopedModels
@@ -2607,6 +2623,31 @@ export class InteractiveMode {
 				this.editor.setText("");
 				return;
 			}
+			if (text === "/cloud-status") {
+				this.editor.setText("");
+				await this.handleCloudStatus();
+				return;
+			}
+			if (text === "/cloud-login") {
+				this.editor.setText("");
+				await this.handleCloudLogin();
+				return;
+			}
+			if (text === "/cloud-logout") {
+				this.editor.setText("");
+				await this.handleCloudLogout();
+				return;
+			}
+			if (text === "/cloud-enable") {
+				this.editor.setText("");
+				await this.handleCloudEnable();
+				return;
+			}
+			if (text === "/cloud-disable") {
+				this.editor.setText("");
+				await this.handleCloudDisable();
+				return;
+			}
 			if (text === "/new") {
 				this.editor.setText("");
 				await this.handleClearCommand();
@@ -2914,6 +2955,14 @@ export class InteractiveMode {
 					this.streamingMessage = undefined;
 				}
 				this.pendingTools.clear();
+
+				// Sync session to cloud after agent turn
+				if (this.cloudIntegration?.isActive) {
+					const sessionId = this.sessionManager.getSessionId();
+					this.cloudIntegration.syncAfterTurn(sessionId).catch((err) => {
+						console.error("Cloud sync failed:", err);
+					});
+				}
 
 				await this.checkShutdownRequested();
 
@@ -5532,6 +5581,113 @@ export class InteractiveMode {
 		this.ui.requestRender();
 	}
 
+	private async handleCloudStatus(): Promise<void> {
+		if (!this.cloudIntegration) {
+			this.showStatus("Cloud not available. Install @drewsepsi/squido-cloud or enable it in settings.");
+			this.ui.requestRender();
+			return;
+		}
+
+		const status = this.cloudIntegration.getStatus();
+		const cred = this.cloudIntegration.auth.getCredential();
+
+		if (status.loggedIn) {
+			const email = cred?.email ?? "unknown";
+			this.showStatus(
+				"Cloud: " +
+					(status.enabled ? "enabled" : "disabled") +
+					" | Account: " +
+					email +
+					" | Last sync: " +
+					(status.lastSync ?? "never") +
+					" | Total synced: " +
+					status.totalSynced,
+			);
+		} else {
+			this.showStatus("Cloud: not logged in. Use /cloud-login to sign in with GitHub.");
+		}
+		this.ui.requestRender();
+	}
+
+	private async handleCloudLogin(): Promise<void> {
+		if (!this.cloudIntegration) {
+			this.showStatus("Cloud not available. Install @drewsepsi/squido-cloud or enable it in settings.");
+			this.ui.requestRender();
+			return;
+		}
+
+		this.showStatus("Starting GitHub OAuth...");
+		this.ui.requestRender();
+		try {
+			await this.cloudIntegration.auth.login({
+				onDeviceCode: (uri, code) => {
+					const formattedMessage = [
+						"",
+						"  Squido Cloud Login",
+						"  " + "=".repeat(40),
+						`  Code: ${code}`,
+						`  URL:  ${uri}`,
+						"  " + "=".repeat(40),
+						"",
+						"  Opening browser...",
+					].join("\n");
+					this.showStatus(formattedMessage);
+					this.ui.requestRender();
+					openBrowser(uri);
+				},
+				onPolling: () => {},
+				onSuccess: () => {
+					this.showStatus("Successfully logged in to Squido Cloud!");
+					this.settingsManager.setCloudSettings({ enabled: true });
+					this.ui.requestRender();
+				},
+				onError: (err) => {
+					this.showError(`Cloud login failed: ${err.message}`);
+					this.ui.requestRender();
+				},
+			});
+		} catch (err) {
+			this.showError(`Cloud login error: ${err instanceof Error ? err.message : String(err)}`);
+			this.ui.requestRender();
+		}
+	}
+
+	private async handleCloudLogout(): Promise<void> {
+		if (!this.cloudIntegration) {
+			this.showStatus("Cloud not available. Install @drewsepsi/squido-cloud or enable it in settings.");
+			this.ui.requestRender();
+			return;
+		}
+
+		this.cloudIntegration.auth.logout();
+		this.settingsManager.setCloudSettings({});
+		this.showStatus("Logged out of Squido Cloud.");
+		this.ui.requestRender();
+	}
+
+	private async handleCloudEnable(): Promise<void> {
+		if (!this.cloudIntegration) {
+			this.showStatus("Cloud not available. Install @drewsepsi/squido-cloud or enable it in settings.");
+			this.ui.requestRender();
+			return;
+		}
+
+		this.settingsManager.setCloudSettings({ enabled: true });
+		this.showStatus("Cloud sync enabled.");
+		this.ui.requestRender();
+	}
+
+	private async handleCloudDisable(): Promise<void> {
+		if (!this.cloudIntegration) {
+			this.showStatus("Cloud not available. Install @drewsepsi/squido-cloud or enable it in settings.");
+			this.ui.requestRender();
+			return;
+		}
+
+		this.settingsManager.setCloudSettings({ enabled: false });
+		this.showStatus("Cloud sync disabled.");
+		this.ui.requestRender();
+	}
 	private async handleClearCommand(): Promise<void> {
 		if (this.loadingAnimation) {
 			this.loadingAnimation.stop();

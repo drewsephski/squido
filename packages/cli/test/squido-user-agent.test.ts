@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { getSquidoUserAgent } from "../src/utils/squido-user-agent.ts";
 
 describe("getPiUserAgent", () => {
 	it("formats the user agent expected by pi.dev", () => {

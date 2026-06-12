@@ -7,6 +7,8 @@
 			"@drewsepsi/squido-agent-core/*": ["../agent/dist/*.d.ts"],
 			"@drewsepsi/squido-ai": ["../ai/dist/index.d.ts"],
 			"@drewsepsi/squido-ai/*": ["../ai/dist/*.d.ts", "../ai/dist/providers/*.d.ts"],
+			"@drewsepsi/squido-cloud": ["../cloud/dist/index.d.ts"],
+			"@drewsepsi/squido-cloud/*": ["../cloud/dist/*.d.ts"],
 			"@drewsepsi/squido-tui": ["../tui/dist/index.d.ts"],
 			"@drewsepsi/squido-tui/*": ["../tui/dist/*.d.ts", "../tui/dist/components/*.d.ts"]
 		},

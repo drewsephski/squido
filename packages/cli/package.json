@@ -35,6 +35,7 @@
 	"dependencies": {
 		"@drewsepsi/squido-agent-core": "^0.1.0",
 		"@drewsepsi/squido-ai": "^0.1.0",
+		"@drewsepsi/squido-cloud": "0.1.0",
 		"@drewsepsi/squido-tui": "^0.1.0",
 		"@silvia-odwyer/photon-node": "0.3.4",
 		"chalk": "5.6.2",
