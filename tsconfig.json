@@ -19,5 +19,5 @@
 		}
 	},
 	"include": ["packages/*/src/**/*", "packages/*/test/**/*", "packages/cli/examples/**/*"],
-	"exclude": ["**/dist/**", "packages/cli/examples/extensions/gondolin/**"]
+	"exclude": ["**/dist/**", "web-ui/**", "packages/cli/examples/extensions/gondolin/**"]
 }

@@ -76,7 +76,9 @@ export function ShareView() {
 	if (isLoading) {
 		return (
 			<div style={pageStyle}>
-				<div style={loadingStyle}>Loading shared session...</div>
+				<div className="dashboard-status" style={{ textAlign: "center" }}>
+					Loading shared session...
+				</div>
 			</div>
 		);
 	}
@@ -84,7 +86,7 @@ export function ShareView() {
 	if (notFound) {
 		return (
 			<div style={pageStyle}>
-				<div style={centerStyle}>
+				<div className="dashboard-status" style={{ textAlign: "center" }}>
 					<p style={{ fontSize: "1.0625rem", marginBottom: "0.5rem" }}>
 						Shared session not found or has expired.
 					</p>
@@ -96,7 +98,7 @@ export function ShareView() {
 	if (error) {
 		return (
 			<div style={pageStyle}>
-				<div style={{ ...centerStyle, color: "var(--primary)" }}>
+				<div className="dashboard-status" style={{ color: "var(--primary)", textAlign: "center" }}>
 					Error: {error}
 				</div>
 			</div>
@@ -114,26 +116,26 @@ export function ShareView() {
 			</div>
 
 			<div style={contentInnerStyle}>
-				<div style={headerSectionStyle}>
-					<h1 style={titleStyle}>{session.name}</h1>
-					<div style={metaRowStyle}>
+				<div className="dashboard-header-section">
+					<h1 className="dashboard-title">{session.name}</h1>
+					<div className="dashboard-meta-row">
 						{session.model_used && (
-							<span style={metaBadgeStyle}>
+							<span className="dashboard-meta-badge">
 								Model: {session.model_used}
 							</span>
 						)}
-						<span style={metaBadgeStyle}>
+						<span className="dashboard-meta-badge">
 							Created {formatRelativeTime(session.created_at)}
 						</span>
-						<span style={metaBadgeStyle}>
+						<span className="dashboard-meta-badge">
 							{session.message_count} messages
 						</span>
 					</div>
 				</div>
 
-				<div style={timelineStyle}>
+				<div className="dashboard-timeline">
 					{entries.length === 0 && (
-						<div style={emptyStyle}>No entries in this session.</div>
+						<div className="dashboard-timeline-empty">No entries in this session.</div>
 					)}
 
 					{entries.map((entry) => {
@@ -142,8 +144,8 @@ export function ShareView() {
 							entry.entry_type === "thinking_change"
 						) {
 							return (
-								<div key={entry.id} style={compactBadgeStyle}>
-									<span style={compactBadgeTextStyle}>
+								<div key={entry.id} className="dashboard-compact-badge">
+									<span className="dashboard-compact-badge-text">
 										{entry.entry_type === "model_change"
 											? "Model changed"
 											: "Thinking level changed"}
@@ -158,9 +160,9 @@ export function ShareView() {
 						if (entry.role === "tool") {
 							const isExpanded = expandedTools.has(entry.id);
 							return (
-								<div key={entry.id} style={toolCallWrapperStyle}>
+								<div key={entry.id} className="dashboard-tool-call">
 									<button
-										style={toolCallHeaderStyle}
+										className="dashboard-tool-call-header"
 										onClick={() =>
 											toggleToolExpanded(entry.id)
 										}
@@ -169,13 +171,13 @@ export function ShareView() {
 											{isExpanded ? "▼" : "▶"} Tool call
 										</span>
 										{entry.model_used && (
-											<span style={toolModelStyle}>
+											<span className="dashboard-tool-call-model">
 												{entry.model_used}
 											</span>
 										)}
 									</button>
 									{isExpanded && (
-										<pre style={toolCallBodyStyle}>
+										<pre className="dashboard-tool-call-body">
 											{entry.content}
 										</pre>
 									)}
@@ -187,16 +189,16 @@ export function ShareView() {
 						return (
 							<div
 								key={entry.id}
+								className="dashboard-message-row"
 								style={{
-									...messageRowStyle,
 									flexDirection: isUser
 										? "row-reverse"
 										: "row",
 								}}
 							>
 								<div
+									className="dashboard-message-bubble"
 									style={{
-										...messageBubbleStyle,
 										background: isUser
 											? "var(--primary)"
 											: "var(--surface)",
@@ -214,7 +216,7 @@ export function ShareView() {
 									<pre style={messagePreStyle}>
 										{entry.content}
 									</pre>
-									<div style={messageMetaStyle}>
+									<div className="dashboard-message-meta">
 										{entry.model_used && (
 											<span>{entry.model_used}</span>
 										)}
@@ -240,18 +242,6 @@ const pageStyle: React.CSSProperties = {
 	background: "var(--bg)",
 };
 
-const loadingStyle: React.CSSProperties = {
-	color: "var(--ink-muted)",
-	padding: "3rem 0",
-	textAlign: "center",
-};
-
-const centerStyle: React.CSSProperties = {
-	color: "var(--ink-muted)",
-	padding: "3rem 0",
-	textAlign: "center",
-};
-
 const brandingBarStyle: React.CSSProperties = {
 	textAlign: "center",
 	padding: "0.75rem 1rem",
@@ -267,124 +257,10 @@ const contentInnerStyle: React.CSSProperties = {
 	padding: "2rem 1.5rem",
 };
 
-const headerSectionStyle: React.CSSProperties = {
-	marginBottom: "1.5rem",
-};
-
-const titleStyle: React.CSSProperties = {
-	fontFamily: "var(--font-display)",
-	fontSize: "1.5rem",
-	fontWeight: 700,
-	marginBottom: "0.75rem",
-	letterSpacing: "-0.02em",
-};
-
-const metaRowStyle: React.CSSProperties = {
-	display: "flex",
-	flexWrap: "wrap",
-	gap: "0.5rem",
-};
-
-const metaBadgeStyle: React.CSSProperties = {
-	fontSize: "0.75rem",
-	padding: "0.2rem 0.625rem",
-	background: "var(--surface)",
-	border: "1px solid var(--border)",
-	borderRadius: "var(--radius-sm)",
-	color: "var(--ink-dim)",
-	fontFamily: "var(--font-mono)",
-};
-
-const timelineStyle: React.CSSProperties = {
-	display: "flex",
-	flexDirection: "column",
-	gap: "0.75rem",
-};
-
-const emptyStyle: React.CSSProperties = {
-	color: "var(--ink-dim)",
-	textAlign: "center",
-	padding: "2rem 0",
-	fontSize: "0.875rem",
-};
-
-const messageRowStyle: React.CSSProperties = {
-	display: "flex",
-	gap: "0.75rem",
-};
-
-const messageBubbleStyle: React.CSSProperties = {
-	maxWidth: "75%",
-	padding: "0.75rem 1rem",
-	borderRadius: "var(--radius-md)",
-	fontSize: "0.875rem",
-	lineHeight: 1.6,
-	overflow: "auto",
-};
-
 const messagePreStyle: React.CSSProperties = {
 	whiteSpace: "pre-wrap",
 	wordBreak: "break-word",
 	fontFamily: "var(--font-body)",
 	fontSize: "0.875rem",
 	margin: 0,
-};
-
-const messageMetaStyle: React.CSSProperties = {
-	display: "flex",
-	gap: "0.75rem",
-	marginTop: "0.5rem",
-	fontSize: "0.6875rem",
-	opacity: 0.6,
-	fontFamily: "var(--font-mono)",
-};
-
-const compactBadgeStyle: React.CSSProperties = {
-	display: "flex",
-	justifyContent: "center",
-};
-
-const compactBadgeTextStyle: React.CSSProperties = {
-	fontSize: "0.75rem",
-	padding: "0.2rem 0.75rem",
-	background: "var(--surface)",
-	border: "1px solid var(--border)",
-	borderRadius: "999px",
-	color: "var(--ink-dim)",
-};
-
-const toolCallWrapperStyle: React.CSSProperties = {
-	border: "1px solid var(--border)",
-	borderRadius: "var(--radius-sm)",
-	overflow: "hidden",
-};
-
-const toolCallHeaderStyle: React.CSSProperties = {
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "space-between",
-	width: "100%",
-	padding: "0.5rem 0.75rem",
-	background: "var(--surface)",
-	border: "none",
-	color: "var(--ink-muted)",
-	fontSize: "0.8125rem",
-	fontFamily: "var(--font-mono)",
-	cursor: "pointer",
-	textAlign: "left",
-};
-
-const toolModelStyle: React.CSSProperties = {
-	fontSize: "0.6875rem",
-	color: "var(--ink-dim)",
-};
-
-const toolCallBodyStyle: React.CSSProperties = {
-	padding: "0.75rem",
-	margin: 0,
-	fontSize: "0.8125rem",
-	lineHeight: 1.55,
-	overflowX: "auto",
-	background: "var(--code-bg)",
-	borderTop: "1px solid var(--border)",
 };

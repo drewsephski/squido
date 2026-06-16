@@ -15,6 +15,7 @@ import {
 	OAuthCallback,
 	ShareView,
 } from "./dashboard/index.ts";
+import { AgentPage } from "./agent/index.ts";
 import "./components/components.css";
 
 function Landing() {
@@ -37,6 +38,9 @@ export function App() {
 			<Routes>
 				<Route path="/" element={<Landing />} />
 				<Route path="/docs/*" element={<DocsLayout />} />
+
+				{/* Agent chat (no auth — connects to local Squido server) */}
+				<Route path="/agent" element={<AgentPage />} />
 
 				{/* Public: shared session view (no auth) */}
 				<Route path="/share/:token" element={<ShareView />} />

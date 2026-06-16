@@ -13,3 +13,4 @@ export type {
 	RpcResponse,
 	RpcSessionState,
 } from "./rpc/rpc-types.ts";
+export { runWebMode } from "./web/web-mode.ts";

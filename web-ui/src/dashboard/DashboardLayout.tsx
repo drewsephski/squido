@@ -8,6 +8,7 @@ export function DashboardLayout() {
 	const [sidebarOpen, setSidebarOpen] = useState(false);
 
 	const navItems = [
+		{ to: "/agent", label: "Agent", end: true },
 		{ to: "/dashboard", label: "Sessions", end: true },
 		{ to: "/dashboard/settings", label: "Settings" },
 		{ to: "/dashboard/billing", label: "Billing" },

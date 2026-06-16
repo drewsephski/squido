@@ -540,3 +540,29 @@ export function getSessionsDir(): string {
 export function getDebugLogPath(): string {
 	return join(getAgentDir(), `${APP_NAME}-debug.log`);
 }
+
+/**
+ * Get path to the built web-ui static directory.
+ * In dev (src/), this walks up to the repo root and finds web-ui/dist/.
+ * In dist/ (installed), this looks for web-ui/dist/ relative to the package dir.
+ * Falls back to empty string — the caller handles the missing UI gracefully.
+ */
+export function getWebUiDir(): string {
+	const packageDir = getPackageDir();
+	if (isBunBinary) {
+		return join(packageDir, "web-ui", "dist");
+	}
+	// Walk up from package dir to find web-ui/dist
+	let dir = packageDir;
+	for (let i = 0; i < 4; i++) {
+		const candidate = join(dir, "web-ui", "dist");
+		if (existsSync(candidate)) {
+			return candidate;
+		}
+		const parent = dirname(dir);
+		if (parent === dir) break;
+		dir = parent;
+	}
+	// Not found — return empty string
+	return "";
+}

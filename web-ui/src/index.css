@@ -203,6 +203,11 @@ pre code {
 .reveal-delay-3 { transition-delay: 240ms; }
 .reveal-delay-4 { transition-delay: 320ms; }
 
+@keyframes pulse {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.3; }
+}
+
 @media (prefers-reduced-motion: reduce) {
 	.reveal {
 		opacity: 1;

@@ -31,6 +31,7 @@ export function Header() {
 							<a href="#features">Tools</a>
 							<a href="#install">Install</a>
 							<Link to="/docs">Docs</Link>
+							<Link to="/agent">Agent</Link>
 							<a
 								href="https://github.com/drewsephski/squido"
 								target="_blank"

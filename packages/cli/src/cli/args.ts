@@ -7,7 +7,7 @@ import chalk from "chalk";
 import { APP_NAME, CONFIG_DIR_NAME, ENV_AGENT_DIR, ENV_SESSION_DIR } from "../config.ts";
 import type { ExtensionFlag } from "../core/extensions/types.ts";
 
-export type Mode = "text" | "json" | "rpc";
+export type Mode = "text" | "json" | "rpc" | "web";
 
 export interface Args {
 	provider?: string;
@@ -43,9 +43,12 @@ export interface Args {
 	themes?: string[];
 	noThemes?: boolean;
 	noContextFiles?: boolean;
+	port?: number;
+	host?: string;
 	listModels?: string | true;
 	offline?: boolean;
 	verbose?: boolean;
+	webUiDir?: string;
 	projectTrustOverride?: boolean;
 	messages: string[];
 	fileArgs: string[];
@@ -77,9 +80,18 @@ export function parseArgs(args: string[]): Args {
 			result.version = true;
 		} else if (arg === "--mode" && i + 1 < args.length) {
 			const mode = args[++i];
-			if (mode === "text" || mode === "json" || mode === "rpc") {
+			if (mode === "text" || mode === "json" || mode === "rpc" || mode === "web") {
 				result.mode = mode;
 			}
+		} else if (arg === "--port" && i + 1 < args.length) {
+			const port = parseInt(args[++i], 10);
+			if (!isNaN(port) && port > 0 && port < 65536) {
+				result.port = port;
+			} else {
+				result.diagnostics.push({ type: "warning", message: `Invalid port "${args[i]}". Using default.` });
+			}
+		} else if (arg === "--host" && i + 1 < args.length) {
+			result.host = args[++i];
 		} else if (arg === "--continue" || arg === "-c") {
 			result.continue = true;
 		} else if (arg === "--resume" || arg === "-r") {
@@ -183,6 +195,8 @@ export function parseArgs(args: string[]): Args {
 			result.projectTrustOverride = false;
 		} else if (arg === "--offline") {
 			result.offline = true;
+		} else if (arg === "--web-ui-dir" && i + 1 < args.length) {
+			result.webUiDir = args[++i];
 		} else if (arg.startsWith("@")) {
 			result.fileArgs.push(arg.slice(1)); // Remove @ prefix
 		} else if (arg.startsWith("--")) {
@@ -240,7 +254,7 @@ ${chalk.bold("Options:")}
   --api-key <key>                API key (defaults to env vars)
   --system-prompt <text>         System prompt (default: coding assistant prompt)
   --append-system-prompt <text>  Append text or file contents to the system prompt (can be used multiple times)
-  --mode <mode>                  Output mode: text (default), json, or rpc
+  --mode <mode>                  Output mode: text (default), json, rpc, or web
   --print, -p                    Non-interactive mode: process prompt and exit
   --continue, -c                 Continue previous session
   --resume, -r                   Select a session to resume
@@ -268,6 +282,9 @@ ${chalk.bold("Options:")}
   --theme <path>                 Load a theme file or directory (can be used multiple times)
   --no-themes                    Disable theme discovery and loading
   --no-context-files, -nc        Disable AGENTS.md and CLAUDE.md discovery and loading
+  --port <port>                  Port for web mode (default: 9876)
+  --host <host>                  Host for web mode (default: localhost)
+  --web-ui-dir <path>            Web UI static directory for web mode
   --export <file>                Export session file to HTML and exit
   --list-models [search]         List available models (with optional fuzzy search)
   --verbose                      Force verbose startup (overrides quietStartup setting)

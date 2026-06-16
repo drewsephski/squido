@@ -47,30 +47,30 @@ export function SessionList() {
 
 	return (
 		<div>
-			<h1 style={headingStyle}>Sessions</h1>
+			<h1 className="dashboard-heading">Sessions</h1>
 
-			<div style={searchBarStyle}>
+			<div style={{ marginBottom: "1rem" }}>
 				<input
 					type="search"
+					className="dashboard-search"
 					placeholder="Search sessions..."
 					value={search}
 					onChange={(e) => setSearch(e.target.value)}
-					style={searchInputStyle}
 				/>
 			</div>
 
 			{isLoading && (
-				<div style={infoBlockStyle}>Loading...</div>
+				<div className="dashboard-status">Loading...</div>
 			)}
 
 			{error && (
-				<div style={{ ...infoBlockStyle, color: "var(--primary)" }}>
+				<div className="dashboard-status" style={{ color: "var(--primary)" }}>
 					Error: {error}
 				</div>
 			)}
 
 			{!isLoading && !error && sessions.length === 0 && (
-				<div style={emptyStateStyle}>
+				<div className="dashboard-empty">
 					<p style={{ fontSize: "1.0625rem", marginBottom: "0.5rem" }}>
 						No sessions yet
 					</p>
@@ -82,61 +82,42 @@ export function SessionList() {
 
 			{sessions.length > 0 && (
 				<>
-					<table style={tableStyle}>
+					<table className="dashboard-table">
 						<thead>
 							<tr>
-								<th style={thStyle}>Name</th>
-								<th style={thStyle}>Model</th>
-								<th style={thStyle}>Date</th>
-								<th style={thStyle}>Messages</th>
-								<th style={{ ...thStyle, width: 70 }} />
+								<th className="dashboard-th">Name</th>
+								<th className="dashboard-th">Model</th>
+								<th className="dashboard-th">Date</th>
+								<th className="dashboard-th">Messages</th>
+								<th className="dashboard-th" style={{ width: 70 }} />
 							</tr>
 						</thead>
 						<tbody>
 							{sessions.map((s) => (
 								<tr
 									key={s.id}
-									style={trStyle}
+									className="dashboard-tr"
 									onClick={() =>
 										navigate(`/dashboard/session/${s.id}`)
 									}
 								>
-									<td style={tdStyle}>{s.name}</td>
-									<td
-										style={{
-											...tdStyle,
-											color: "var(--ink-dim)",
-											fontFamily: "var(--font-mono)",
-											fontSize: "0.8125rem",
-										}}
-									>
+									<td className="dashboard-td">{s.name}</td>
+									<td className="dashboard-td" style={{ color: "var(--ink-dim)", fontFamily: "var(--font-mono)", fontSize: "0.8125rem" }}>
 										{s.model_used ?? "\u2014"}
 									</td>
-									<td
-										style={{
-											...tdStyle,
-											color: "var(--ink-dim)",
-											fontSize: "0.8125rem",
-											whiteSpace: "nowrap",
-										}}
-									>
+									<td className="dashboard-td" style={{ color: "var(--ink-dim)", fontSize: "0.8125rem", whiteSpace: "nowrap" }}>
 										{formatRelativeTime(s.created_at)}
 									</td>
-									<td
-										style={{
-											...tdStyle,
-											color: "var(--ink-dim)",
-										}}
-									>
+									<td className="dashboard-td" style={{ color: "var(--ink-dim)" }}>
 										{s.message_count}
 									</td>
-									<td style={tdStyle}>
+									<td className="dashboard-td">
 										<button
 											onClick={(e) => {
 												e.stopPropagation();
 												handleDelete(s.id, s.name);
 											}}
-											style={deleteBtnStyle}
+											className="dashboard-delete-btn"
 											title="Delete session"
 										>
 											Delete
@@ -147,21 +128,21 @@ export function SessionList() {
 						</tbody>
 					</table>
 
-					<div style={paginationStyle}>
+					<div className="dashboard-pagination">
 						<button
 							className="btn btn-secondary"
-							style={pageBtnStyle}
 							disabled={page <= 1}
 							onClick={() => setPage(page - 1)}
+							style={{ fontSize: "0.8125rem", padding: "0.4rem 1rem" }}
 						>
 							Prev
 						</button>
-						<span style={pageInfoStyle}>Page {page}</span>
+						<span className="dashboard-page-info">Page {page}</span>
 						<button
 							className="btn btn-secondary"
-							style={pageBtnStyle}
 							disabled={sessions.length < pageSize}
 							onClick={() => setPage(page + 1)}
+							style={{ fontSize: "0.8125rem", padding: "0.4rem 1rem" }}
 						>
 							Next
 						</button>
@@ -171,97 +152,3 @@ export function SessionList() {
 		</div>
 	);
 }
-
-const headingStyle: React.CSSProperties = {
-	fontFamily: "var(--font-display)",
-	fontSize: "1.5rem",
-	fontWeight: 700,
-	marginBottom: "1.25rem",
-	letterSpacing: "-0.02em",
-};
-
-const searchBarStyle: React.CSSProperties = {
-	marginBottom: "1rem",
-};
-
-const searchInputStyle: React.CSSProperties = {
-	width: "100%",
-	padding: "0.625rem 0.875rem",
-	background: "var(--surface)",
-	border: "1px solid var(--border)",
-	borderRadius: "var(--radius-sm)",
-	color: "var(--ink)",
-	fontFamily: "var(--font-body)",
-	fontSize: "0.875rem",
-	outline: "none",
-	boxSizing: "border-box",
-};
-
-const infoBlockStyle: React.CSSProperties = {
-	color: "var(--ink-muted)",
-	padding: "2rem 0",
-};
-
-const emptyStateStyle: React.CSSProperties = {
-	color: "var(--ink-dim)",
-	padding: "3rem 0",
-	textAlign: "center",
-};
-
-const tableStyle: React.CSSProperties = {
-	width: "100%",
-	borderCollapse: "collapse",
-};
-
-const thStyle: React.CSSProperties = {
-	textAlign: "left",
-	padding: "0.625rem 0.75rem",
-	fontSize: "0.75rem",
-	fontWeight: 600,
-	textTransform: "uppercase",
-	letterSpacing: "0.06em",
-	color: "var(--ink-dim)",
-	borderBottom: "1px solid var(--border)",
-};
-
-const trStyle: React.CSSProperties = {
-	cursor: "pointer",
-	transition: "background 0.1s",
-};
-
-const tdStyle: React.CSSProperties = {
-	padding: "0.625rem 0.75rem",
-	fontSize: "0.875rem",
-	borderBottom: "1px solid var(--border)",
-	color: "var(--ink)",
-	verticalAlign: "middle",
-};
-
-const deleteBtnStyle: React.CSSProperties = {
-	background: "none",
-	border: "1px solid var(--border)",
-	color: "var(--ink-dim)",
-	fontSize: "0.75rem",
-	padding: "0.2rem 0.5rem",
-	borderRadius: "var(--radius-sm)",
-	cursor: "pointer",
-	transition: "all 0.15s",
-};
-
-const paginationStyle: React.CSSProperties = {
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-	gap: "1rem",
-	marginTop: "1.5rem",
-};
-
-const pageBtnStyle: React.CSSProperties = {
-	fontSize: "0.8125rem",
-	padding: "0.4rem 1rem",
-};
-
-const pageInfoStyle: React.CSSProperties = {
-	color: "var(--ink-dim)",
-	fontSize: "0.875rem",
-};

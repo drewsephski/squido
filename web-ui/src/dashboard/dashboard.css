@@ -147,3 +147,257 @@
 	color: var(--ink-dim);
 	font-size: 0.9375rem;
 }
+
+/* ========== Dashboard Heading ========== */
+.dashboard-heading {
+	font-family: var(--font-display);
+	font-size: 1.5rem;
+	font-weight: 700;
+	margin-bottom: 1.25rem;
+	letter-spacing: -0.02em;
+}
+
+/* ========== Dashboard Search ========== */
+.dashboard-search {
+	width: 100%;
+	padding: 0.625rem 0.875rem;
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-sm);
+	color: var(--ink);
+	font-family: var(--font-body);
+	font-size: 0.875rem;
+	outline: none;
+	box-sizing: border-box;
+	transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.dashboard-search:focus {
+	border-color: var(--primary-muted);
+}
+
+/* ========== Dashboard Table ========== */
+.dashboard-table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.dashboard-th {
+	text-align: left;
+	padding: 0.625rem 0.75rem;
+	font-size: 0.75rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--ink-dim);
+	border-bottom: 1px solid var(--border);
+}
+
+.dashboard-td {
+	padding: 0.625rem 0.75rem;
+	font-size: 0.875rem;
+	border-bottom: 1px solid var(--border);
+	color: var(--ink);
+	vertical-align: middle;
+}
+
+.dashboard-tr {
+	cursor: pointer;
+	transition: background 0.1s var(--ease-out);
+}
+
+.dashboard-tr:hover {
+	background: var(--surface-hover);
+}
+
+/* ========== Dashboard Meta Badge ========== */
+.dashboard-meta-badge {
+	font-size: 0.75rem;
+	padding: 0.2rem 0.625rem;
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-sm);
+	color: var(--ink-dim);
+	font-family: var(--font-mono);
+	white-space: nowrap;
+}
+
+/* ========== Dashboard Pagination ========== */
+.dashboard-pagination {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 1rem;
+	margin-top: 1.5rem;
+}
+
+.dashboard-page-info {
+	color: var(--ink-dim);
+	font-size: 0.875rem;
+}
+
+/* ========== Dashboard Empty State ========== */
+.dashboard-empty {
+	color: var(--ink-dim);
+	padding: 3rem 0;
+	text-align: center;
+}
+
+/* ========== Dashboard Status Block ========== */
+.dashboard-status {
+	color: var(--ink-muted);
+	padding: 2rem 0;
+}
+
+/* ========== Dashboard Back Button ========== */
+.dashboard-back-btn {
+	font-size: 0.8125rem;
+	padding: 0.4rem 1rem;
+	margin-bottom: 1rem;
+}
+
+/* ========== Dashboard Header Section ========== */
+.dashboard-header-section {
+	margin-bottom: 1.5rem;
+}
+
+/* ========== Dashboard Title ========== */
+.dashboard-title {
+	font-family: var(--font-display);
+	font-size: 1.5rem;
+	font-weight: 700;
+	margin-bottom: 0.75rem;
+	letter-spacing: -0.02em;
+}
+
+/* ========== Dashboard Meta Row ========== */
+.dashboard-meta-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+
+/* ========== Dashboard Search Wrapper ========== */
+.dashboard-search-wrapper {
+	margin-bottom: 1.5rem;
+}
+
+/* ========== Dashboard Timeline ========== */
+.dashboard-timeline {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+/* ========== Dashboard Timeline Empty ========== */
+.dashboard-timeline-empty {
+	color: var(--ink-dim);
+	text-align: center;
+	padding: 2rem 0;
+	font-size: 0.875rem;
+}
+
+/* ========== Dashboard Message Row ========== */
+.dashboard-message-row {
+	display: flex;
+	gap: 0.75rem;
+}
+
+/* ========== Dashboard Message Bubble ========== */
+.dashboard-message-bubble {
+	max-width: 75%;
+	padding: 0.75rem 1rem;
+	border-radius: var(--radius-md);
+	font-size: 0.875rem;
+	line-height: 1.6;
+	overflow: auto;
+}
+
+.dashboard-message-bubble pre {
+	margin: 0;
+}
+
+/* ========== Dashboard Message Meta ========== */
+.dashboard-message-meta {
+	display: flex;
+	gap: 0.75rem;
+	margin-top: 0.5rem;
+	font-size: 0.6875rem;
+	opacity: 0.6;
+	font-family: var(--font-mono);
+}
+
+/* ========== Dashboard Compact Badge ========== */
+.dashboard-compact-badge {
+	display: flex;
+	justify-content: center;
+}
+
+.dashboard-compact-badge-text {
+	font-size: 0.75rem;
+	padding: 0.2rem 0.75rem;
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	color: var(--ink-dim);
+}
+
+/* ========== Dashboard Tool Call ========== */
+.dashboard-tool-call {
+	border: 1px solid var(--border);
+	border-radius: var(--radius-sm);
+	overflow: hidden;
+}
+
+.dashboard-tool-call-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+	padding: 0.5rem 0.75rem;
+	background: var(--surface);
+	border: none;
+	color: var(--ink-muted);
+	font-size: 0.8125rem;
+	font-family: var(--font-mono);
+	cursor: pointer;
+	text-align: left;
+	transition: background var(--duration-fast) var(--ease-out);
+}
+
+.dashboard-tool-call-header:hover {
+	background: var(--surface-hover);
+}
+
+.dashboard-tool-call-model {
+	font-size: 0.6875rem;
+	color: var(--ink-dim);
+}
+
+.dashboard-tool-call-body {
+	padding: 0.75rem;
+	margin: 0;
+	font-size: 0.8125rem;
+	line-height: 1.55;
+	overflow-x: auto;
+	background: var(--code-bg);
+	border-top: 1px solid var(--border);
+}
+
+/* ========== Dashboard Delete Button ========== */
+.dashboard-delete-btn {
+	background: none;
+	border: 1px solid var(--border);
+	color: var(--ink-dim);
+	font-size: 0.75rem;
+	padding: 0.2rem 0.5rem;
+	border-radius: var(--radius-sm);
+	cursor: pointer;
+	transition: all 0.15s var(--ease-out);
+	font-family: var(--font-body);
+}
+
+.dashboard-delete-btn:hover {
+	color: var(--primary);
+	border-color: var(--primary);
+}

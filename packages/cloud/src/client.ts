@@ -60,7 +60,9 @@ export class SquidoCloudClient {
 		return this.request("POST", "/v1/auth/github/start");
 	}
 
-	async pollGitHubOAuth(deviceCode: string): Promise<{ token: string; user: { id: string; email: string; login: string } }> {
+	async pollGitHubOAuth(
+		deviceCode: string,
+	): Promise<{ token: string; user: { id: string; email: string; login: string } }> {
 		const response = await this.request<Record<string, unknown>>("POST", "/v1/auth/github/callback", { deviceCode });
 		// API returns { status: "pending" } when user hasn't authorized yet
 		if (response.status === "pending") {

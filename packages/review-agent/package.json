@@ -1,0 +1,55 @@
+{
+	"name": "@drewsepsi/review-agent",
+	"version": "0.1.0",
+	"description": "AI-powered pull request review agent for GitHub Actions",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		},
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"dist",
+		"README.md"
+	],
+	"scripts": {
+		"clean": "shx rm -rf dist",
+		"build": "tsc -p tsconfig.build.json && node scripts/bundle-action.mjs",
+		"test": "vitest --run",
+		"prepublishOnly": "npm run clean && npm run build"
+	},
+	"dependencies": {
+		"@drewsepsi/squido-ai": "0.1.0",
+		"@octokit/rest": "21.1.1",
+		"typebox": "1.1.38",
+		"yaml": "2.9.0"
+	},
+	"keywords": [
+		"ai",
+		"code-review",
+		"github-actions",
+		"pull-request",
+		"automation"
+	],
+	"author": "Drewsephski",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/drewsephski/squido.git",
+		"directory": "packages/review-agent"
+	},
+	"engines": {
+		"node": ">=22.19.0"
+	},
+	"devDependencies": {
+		"@types/node": "24.12.4",
+		"esbuild": "0.28.0",
+		"shx": "0.4.0",
+		"typescript": "5.9.3",
+		"vitest": "3.2.4"
+	}
+}

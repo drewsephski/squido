@@ -1,0 +1,48 @@
+name: "Squido Review"
+description: "AI-powered pull request review using Squido's multi-provider LLM abstraction"
+author: "Drewsephski"
+
+inputs:
+  api-key:
+    description: "LLM provider API key (falls back to standard env vars like ANTHROPIC_API_KEY, OPENAI_API_KEY)"
+    required: false
+  provider:
+    description: "LLM provider (opencode-go, anthropic, openai, etc.)"
+    required: false
+    default: "opencode-go"
+  model:
+    description: "LLM model to use for review"
+    required: false
+    default: "deepseek-v4-flash"
+  mode:
+    description: "Review mode (advisory or blocking)"
+    required: false
+    default: "advisory"
+  max-comments:
+    description: "Maximum number of review comments to post"
+    required: false
+    default: "20"
+  min-confidence:
+    description: "Minimum confidence threshold (0.0-1.0)"
+    required: false
+    default: "0.6"
+  github-token:
+    description: "GitHub token for API access (defaults to GITHUB_TOKEN)"
+    required: false
+    default: ${{ github.token }}
+
+runs:
+  using: "docker"
+  image: "Dockerfile"
+  env:
+    GITHUB_TOKEN: ${{ inputs.github-token }}
+    SQUIDO_REVIEW_API_KEY: ${{ inputs.api-key }}
+    SQUIDO_REVIEW_PROVIDER: ${{ inputs.provider }}
+    SQUIDO_REVIEW_MODEL: ${{ inputs.model }}
+    SQUIDO_REVIEW_MODE: ${{ inputs.mode }}
+    SQUIDO_REVIEW_MAX_COMMENTS: ${{ inputs.max-comments }}
+    SQUIDO_REVIEW_MIN_CONFIDENCE: ${{ inputs.min-confidence }}
+
+branding:
+  icon: "check-circle"
+  color: "blue"

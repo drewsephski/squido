@@ -4,6 +4,7 @@
 	"type": "module",
 	"workspaces": [
 		"packages/*",
+		"web-ui",
 		"packages/cli/examples/extensions/with-deps",
 		"packages/cli/examples/extensions/custom-provider-anthropic",
 		"packages/cli/examples/extensions/custom-provider-gitlab-duo",
@@ -12,7 +13,7 @@
 	],
 	"scripts": {
 		"clean": "npm run clean --workspaces",
-		"build": "cd packages/tui && npm run build && cd ../ai && npm run build && cd ../agent && npm run build && cd ../cloud && npm run build && cd ../cli && npm run build",
+		"build": "cd packages/tui && npm run build && cd ../ai && npm run build && cd ../agent && npm run build && cd ../cloud && npm run build && cd ../cli && npm run build && cd ../review-agent && npm run build",
 		"check": "biome check --write --error-on-warnings . && npm run check:pinned-deps && npm run check:ts-imports && npm run check:shrinkwrap && tsgo --noEmit && npm run check:browser-smoke",
 		"check:browser-smoke": "node scripts/check-browser-smoke.mjs",
 		"check:pinned-deps": "node scripts/check-pinned-deps.mjs",
@@ -59,6 +60,6 @@
 		}
 	},
 	"dependencies": {
-		"typebox": "^1.1.38"
+		"typebox": "1.1.38"
 	}
 }

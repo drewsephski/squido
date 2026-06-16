@@ -6,13 +6,13 @@ import { fileURLToPath } from "node:url";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "..");
-const codingAgentDir = join(repoRoot, "packages/coding-agent");
+const codingAgentDir = join(repoRoot, "packages/cli");
 const rootLockfilePath = join(repoRoot, "package-lock.json");
 const shrinkwrapPath = join(codingAgentDir, "npm-shrinkwrap.json");
-const internalPackagePrefix = "@earendil-works/pi-";
+const internalPackagePrefix = "@drewsepsi/";
 const allowedInstallScriptPackages = new Map([
 	["@google/genai@1.52.0", "preinstall is a no-op in the published package"],
-	["protobufjs@7.5.9", "postinstall only warns about protobufjs version scheme mismatches"],
+	["protobufjs@7.6.4", "postinstall only warns about protobufjs version scheme mismatches"],
 ]);
 
 const args = new Set(process.argv.slice(2));
@@ -338,25 +338,27 @@ try {
 	const shrinkwrap = generateShrinkwrap();
 	const content = `${JSON.stringify(shrinkwrap, null, "\t")}\n`;
 
+	const shrinkwrapRelPath = `packages/cli/npm-shrinkwrap.json`;
+
 	if (checkOnly) {
 		if (!existsSync(shrinkwrapPath)) {
-			console.error("packages/coding-agent/npm-shrinkwrap.json is missing.");
+			console.error(`${shrinkwrapRelPath} is missing.`);
 			console.error("Run: npm run shrinkwrap:coding-agent");
 			process.exit(1);
 		}
 		const current = readFileSync(shrinkwrapPath, "utf8");
 		if (current !== content) {
-			console.error("packages/coding-agent/npm-shrinkwrap.json is out of date.");
+			console.error(`${shrinkwrapRelPath} is out of date.`);
 			console.error("Run: npm run shrinkwrap:coding-agent");
 			process.exit(1);
 		}
-		console.log("packages/coding-agent/npm-shrinkwrap.json is up to date.");
+		console.log(`${shrinkwrapRelPath} is up to date.`);
 	} else {
 		writeFileSync(shrinkwrapPath, content);
 		const packageCount = Object.keys(shrinkwrap.packages).length - 1;
 		const platformPackageCount = Object.values(shrinkwrap.packages).filter((entry) => entry.os || entry.cpu || entry.libc).length;
 		console.log(
-			`Wrote packages/coding-agent/npm-shrinkwrap.json (${packageCount} packages, ${platformPackageCount} platform-specific).`,
+			`Wrote ${shrinkwrapRelPath} (${packageCount} packages, ${platformPackageCount} platform-specific).`,
 		);
 	}
 } catch (error) {
