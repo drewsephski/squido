@@ -651,7 +651,7 @@ export class InteractiveMode {
 		// Add compact header with web UI link (unless silenced)
 		if (this.options.verbose || !this.settingsManager.getQuietStartup()) {
 			const logo = theme.bold(theme.fg("accent", APP_NAME)) + theme.fg("dim", ` v${this.version}`);
-			const webUrl = "http://127.0.0.1:9876/agent";
+			const webUrl = "http://127.0.0.1:9878/agent";
 			const webLink = hyperlink(theme.fg("dim", webUrl), webUrl);
 			const headerText = `${logo} · Web UI: ${webLink}`;
 			this.builtInHeader = new Text(headerText, 1, 0);
