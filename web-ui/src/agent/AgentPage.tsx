@@ -538,14 +538,21 @@ export function AgentPage() {
 				<div style={topBarLeftStyle}>
 					<button
 						onClick={() => setSidebarOpen(!sidebarOpen)}
-						style={hamburgerStyle}
+						className="agent-panel-toggle"
+						style={panelToggleStyle}
 						aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
 					>
-						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-							<line x1="3" y1="6" x2="21" y2="6" />
-							<line x1="3" y1="12" x2="21" y2="12" />
-							<line x1="3" y1="18" x2="21" y2="18" />
-						</svg>
+						{sidebarOpen ? (
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+								<line x1="18" y1="3" x2="18" y2="21" />
+								<polyline points="13 15 9 12 13 9" />
+							</svg>
+						) : (
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+								<line x1="6" y1="3" x2="6" y2="21" />
+								<polyline points="11 9 15 12 11 15" />
+							</svg>
+						)}
 					</button>
 					<span style={brandTextStyle}>Squido Agent</span>
 					<span style={brandBadgeStyle}>IDE</span>
@@ -562,205 +569,221 @@ export function AgentPage() {
 							)}
 						</>
 					)}
+					<button
+						onClick={() => setRightSidebarOpen(!rightSidebarOpen)}
+						className="agent-panel-toggle"
+						style={panelToggleStyle}
+						aria-label={rightSidebarOpen ? "Close context panel" : "Open context panel"}
+					>
+						{rightSidebarOpen ? (
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+								<line x1="6" y1="3" x2="6" y2="21" />
+								<polyline points="11 9 15 12 11 15" />
+							</svg>
+						) : (
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+								<line x1="18" y1="3" x2="18" y2="21" />
+								<polyline points="13 15 9 12 13 9" />
+							</svg>
+						)}
+					</button>
 				</div>
 			</div>
 
 			<div style={bodyStyle}>
-				{/* Sidebar */}
-				{sidebarOpen && (
-					<div style={sidebarStyle}>
-						{/* Session info */}
-						<div style={cardStyle}>
-							<div style={cardTitleStyle}>Session</div>
-							<div style={cardBodyStyle}>
-								{isConnected && state ? (
-									<>
-										<div style={infoRowStyle}>
-											<span style={infoLabelStyle}>Name</span>
-											<span style={infoValueStyle}>
-												{state.sessionName || "Unnamed"}
-											</span>
-										</div>
-										<div style={infoRowStyle}>
-											<span style={infoLabelStyle}>ID</span>
-											<span style={infoValueMonoStyle}>
-												{state.sessionId.slice(0, 12)}...
-											</span>
-										</div>
-										<div style={infoRowStyle}>
-											<span style={infoLabelStyle}>Messages</span>
-											<span style={infoValueStyle}>{state.messageCount}</span>
-										</div>
-										<div style={infoRowStyle}>
-											<span style={infoLabelStyle}>Directory</span>
-											<span style={infoValueMonoStyle}>
-												{state.cwd.split("\\").pop()?.split("/").pop() || state.cwd}
-											</span>
-										</div>
-									</>
-								) : (
-									<div style={disconnectedHintStyle}>
-										Connect to see session info
+				{/* Left sidebar */}
+				<div style={sidebarOpen ? sidebarOpenStyle : sidebarClosedStyle}>
+					{/* Session info */}
+					<div style={cardStyle}>
+						<div style={cardTitleStyle}>Session</div>
+						<div style={cardBodyStyle}>
+							{isConnected && state ? (
+								<>
+									<div style={infoRowStyle}>
+										<span style={infoLabelStyle}>Name</span>
+										<span style={infoValueStyle}>
+											{state.sessionName || "Unnamed"}
+										</span>
 									</div>
-								)}
-							</div>
-						</div>
-
-						{/* Model controls */}
-						<div style={cardStyle}>
-							<div style={cardTitleStyle}>Model</div>
-							<div style={cardBodyStyle}>
-								{isConnected && effectiveModel ? (
-									<>
-										<div style={modelCurrentBoxStyle}>
-											<span style={modelProviderStyle}>{effectiveModel.provider}</span>
-											<span style={modelNameStyle}>{effectiveModel.id}</span>
-										</div>
-
-										{/* Model picker trigger */}
-										<div style={{ position: "relative" }}>
-											<button
-												onClick={() => setModelPickerOpen(!modelPickerOpen)}
-												style={changeModelButtonStyle}
-											>
-												Change model
-												<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ marginLeft: "0.25rem" }}>
-													<polyline points="6 9 12 15 18 9" />
-												</svg>
-											</button>
-
-											{/* Model picker dropdown */}
-											{modelPickerOpen && (
-												<>
-													<div style={pickerBackdropStyle} />
-													<div ref={pickerRef} style={pickerOverlayStyle}>
-													<div style={pickerHeaderStyle}>
-														<input
-															ref={searchRef}
-															type="text"
-															placeholder="Search models..."
-															value={modelSearch}
-															onChange={(e) => setModelSearch(e.target.value)}
-															style={pickerSearchStyle}
-														/>
-														<span style={pickerCountStyle}>
-															{allModels.length} available
-														</span>
-													</div>
-													<div style={pickerListStyle} className="model-picker-list">
-														{modelsLoading ? (
-															<div style={pickerLoadingStyle}>Loading models...</div>
-														) : allModels.length === 0 && !modelSearch ? (
-															<div style={pickerEmptyStyle}>
-																<div style={pickerEmptyTitleStyle}>No models available</div>
-																<div style={pickerEmptySubStyle}>
-																	{modelsError
-																		? `Failed to load models: ${modelsError}`
-																		: "No models found. Configure providers in settings."}
-																</div>
-															</div>
-														) : Object.keys(modelsByProvider).length === 0 ? (
-															<div style={pickerEmptyStyle}>
-																No models match "{modelSearch}"
-															</div>
-														) : (
-															Object.entries(modelsByProvider).map(([provider, models]) => (
-																<div key={provider}>
-																	<div style={providerGroupHeaderStyle}>
-																		{provider}
-																		<span style={providerCountStyle}>{models.length}</span>
-																	</div>
-																	{models.map((m) => {
-																		const key = `${m.provider}/${m.id}`;
-																		const isCurrent = key === currentModelKey;
-																		return (
-																			<button
-																				key={key}
-																				onClick={() => handleSetModel(m.provider, m.id)}
-																				style={{
-																					...modelItemStyle,
-																					...(isCurrent ? modelItemActiveStyle : {}),
-																				}}
-																			>
-																				<div style={modelItemMainStyle}>
-																					<span style={modelItemIdStyle}>
-																						{m.name && m.name !== m.id ? m.name : m.id}
-																					</span>
-																					{m.reasoning && (
-																						<span style={modelItemTagStyle}>think</span>
-																					)}
-																				</div>
-																				<div style={modelItemMetaStyle}>
-																					{m.contextWindow && (
-																						<span>{formatTokens(m.contextWindow)} ctx</span>
-																					)}
-																					{isCurrent && (
-																						<span style={modelItemCurrentBadgeStyle}>active</span>
-																					)}
-																				</div>
-																			</button>
-																		);
-																	})}
-																</div>
-															))
-														)}
-													</div>
-													</div>
-												</>
-											)}
-										</div>
-
-										{/* Thinking level */}
-										<div style={thinkingSectionStyle}>
-											<label style={infoLabelStyle}>Thinking</label>
-											<div style={thinkingButtonGroupStyle}>
-												{THINKING_LEVELS.map((level) => (
-													<button
-														key={level}
-														onClick={() => handleSetThinking(level)}
-														style={{
-															...thinkingButtonStyle,
-													...(state?.thinkingLevel === level
-														? thinkingButtonActiveStyle
-														: {}),
-														}}
-													>
-														{level}
-													</button>
-												))}
-											</div>
-										</div>
-									</>
-								) : (
-									<div style={disconnectedHintStyle}>
-										Connect to configure model
+									<div style={infoRowStyle}>
+										<span style={infoLabelStyle}>ID</span>
+										<span style={infoValueMonoStyle}>
+											{state.sessionId.slice(0, 12)}...
+										</span>
 									</div>
-								)}
-							</div>
-						</div>
-
-						{/* Commands */}
-						<div style={cardStyle}>
-							<div style={cardTitleStyle}>Commands</div>
-							<div style={cardBodyStyle}>
-								{SLASH_COMMANDS.map(({ cmd, desc }) => (
-									<div key={cmd} style={commandRowStyle}>
-										<span style={commandNameStyle}>{cmd}</span>
-										<span style={commandDescStyle}>{desc}</span>
+									<div style={infoRowStyle}>
+										<span style={infoLabelStyle}>Messages</span>
+										<span style={infoValueStyle}>{state.messageCount}</span>
 									</div>
-								))}
-							</div>
-						</div>
-
-						{/* Terminal hint */}
-						<div style={terminalHintStyle}>
-							<span style={terminalHintIconStyle}>~</span>
-							<span style={terminalHintTextStyle}>
-								Run <code style={inlineCodeStyle}>squido</code> in your terminal for the full TUI experience
-							</span>
+									<div style={infoRowStyle}>
+										<span style={infoLabelStyle}>Directory</span>
+										<span style={infoValueMonoStyle}>
+											{state.cwd.split("\\").pop()?.split("/").pop() || state.cwd}
+										</span>
+									</div>
+								</>
+							) : (
+								<div style={disconnectedHintStyle}>
+									Connect to see session info
+								</div>
+							)}
 						</div>
 					</div>
-				)}
+
+					{/* Model controls */}
+					<div style={cardStyle}>
+						<div style={cardTitleStyle}>Model</div>
+						<div style={cardBodyStyle}>
+							{isConnected && effectiveModel ? (
+								<>
+									<div style={modelCurrentBoxStyle}>
+										<span style={modelProviderStyle}>{effectiveModel.provider}</span>
+										<span style={modelNameStyle}>{effectiveModel.id}</span>
+									</div>
+
+									{/* Model picker trigger */}
+									<div style={{ position: "relative" }}>
+										<button
+											onClick={() => setModelPickerOpen(!modelPickerOpen)}
+											style={changeModelButtonStyle}
+										>
+											Change model
+											<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ marginLeft: "0.25rem" }}>
+												<polyline points="6 9 12 15 18 9" />
+											</svg>
+										</button>
+
+										{/* Model picker dropdown */}
+										{modelPickerOpen && (
+											<>
+												<div style={pickerBackdropStyle} />
+												<div ref={pickerRef} style={pickerOverlayStyle}>
+												<div style={pickerHeaderStyle}>
+													<input
+														ref={searchRef}
+														type="text"
+														placeholder="Search models..."
+														value={modelSearch}
+														onChange={(e) => setModelSearch(e.target.value)}
+														style={pickerSearchStyle}
+													/>
+													<span style={pickerCountStyle}>
+														{allModels.length} available
+													</span>
+												</div>
+												<div style={pickerListStyle} className="model-picker-list">
+													{modelsLoading ? (
+														<div style={pickerLoadingStyle}>Loading models...</div>
+													) : allModels.length === 0 && !modelSearch ? (
+														<div style={pickerEmptyStyle}>
+															<div style={pickerEmptyTitleStyle}>No models available</div>
+															<div style={pickerEmptySubStyle}>
+																{modelsError
+																	? `Failed to load models: ${modelsError}`
+																	: "No models found. Configure providers in settings."}
+															</div>
+														</div>
+													) : Object.keys(modelsByProvider).length === 0 ? (
+														<div style={pickerEmptyStyle}>
+															No models match "{modelSearch}"
+														</div>
+													) : (
+														Object.entries(modelsByProvider).map(([provider, models]) => (
+															<div key={provider}>
+																<div style={providerGroupHeaderStyle}>
+																	{provider}
+																	<span style={providerCountStyle}>{models.length}</span>
+																</div>
+																{models.map((m) => {
+																	const key = `${m.provider}/${m.id}`;
+																	const isCurrent = key === currentModelKey;
+																	return (
+																		<button
+																			key={key}
+																			onClick={() => handleSetModel(m.provider, m.id)}
+																			style={{
+																				...modelItemStyle,
+																				...(isCurrent ? modelItemActiveStyle : {}),
+																			}}
+																		>
+																			<div style={modelItemMainStyle}>
+																				<span style={modelItemIdStyle}>
+																					{m.name && m.name !== m.id ? m.name : m.id}
+																				</span>
+																				{m.reasoning && (
+																					<span style={modelItemTagStyle}>think</span>
+																				)}
+																			</div>
+																			<div style={modelItemMetaStyle}>
+																				{m.contextWindow && (
+																					<span>{formatTokens(m.contextWindow)} ctx</span>
+																				)}
+																				{isCurrent && (
+																					<span style={modelItemCurrentBadgeStyle}>active</span>
+																				)}
+																			</div>
+																		</button>
+																	);
+																})}
+															</div>
+														))
+													)}
+												</div>
+												</div>
+											</>
+										)}
+									</div>
+
+									{/* Thinking level */}
+									<div style={thinkingSectionStyle}>
+										<label style={infoLabelStyle}>Thinking</label>
+										<div style={thinkingButtonGroupStyle}>
+											{THINKING_LEVELS.map((level) => (
+												<button
+													key={level}
+													onClick={() => handleSetThinking(level)}
+													style={{
+														...thinkingButtonStyle,
+												...(state?.thinkingLevel === level
+													? thinkingButtonActiveStyle
+													: {}),
+													}}
+												>
+													{level}
+												</button>
+											))}
+										</div>
+									</div>
+								</>
+							) : (
+								<div style={disconnectedHintStyle}>
+									Connect to configure model
+								</div>
+							)}
+						</div>
+					</div>
+
+					{/* Commands */}
+					<div style={cardStyle}>
+						<div style={cardTitleStyle}>Commands</div>
+						<div style={cardBodyStyle}>
+							{SLASH_COMMANDS.map(({ cmd, desc }) => (
+								<div key={cmd} style={commandRowStyle}>
+									<span style={commandNameStyle}>{cmd}</span>
+									<span style={commandDescStyle}>{desc}</span>
+								</div>
+							))}
+						</div>
+					</div>
+
+					{/* Terminal hint */}
+					<div style={terminalHintStyle}>
+						<span style={terminalHintIconStyle}>~</span>
+						<span style={terminalHintTextStyle}>
+							Run <code style={inlineCodeStyle}>squido</code> in your terminal for the full TUI experience
+						</span>
+					</div>
+				</div>
 
 				{/* Main chat area */}
 				<div style={chatAreaStyle}>
@@ -780,6 +803,11 @@ export function AgentPage() {
 								: "Connect to start..."
 						}
 					/>
+				</div>
+
+				{/* Right sidebar */}
+				<div style={rightSidebarOpen ? contextOpenStyle : contextClosedStyle}>
+					<ContextPanel status={status} state={state} onSetThinking={handleSetThinking} />
 				</div>
 			</div>
 		</div>
@@ -823,7 +851,7 @@ const topBarRightStyle: React.CSSProperties = {
 	gap: "0.5rem",
 };
 
-const hamburgerStyle: React.CSSProperties = {
+const panelToggleStyle: React.CSSProperties = {
 	display: "flex",
 	alignItems: "center",
 	justifyContent: "center",
@@ -895,16 +923,49 @@ const bodyStyle: React.CSSProperties = {
 };
 
 // Sidebar
-const sidebarStyle: React.CSSProperties = {
-	width: 260,
+const sidebarBaseStyle: React.CSSProperties = {
 	flexShrink: 0,
 	background: "var(--surface)",
-	borderRight: "1px solid var(--border)",
-	overflow: "auto",
-	padding: "0.75rem",
 	display: "flex",
 	flexDirection: "column",
 	gap: "0.75rem",
+	transition: "width 0.25s ease, padding 0.25s ease, border 0.25s ease",
+};
+
+const sidebarOpenStyle: React.CSSProperties = {
+	...sidebarBaseStyle,
+	width: 260,
+	overflow: "auto",
+	padding: "0.75rem",
+	borderRight: "1px solid var(--border)",
+};
+
+const sidebarClosedStyle: React.CSSProperties = {
+	...sidebarBaseStyle,
+	width: 0,
+	overflow: "hidden",
+	padding: 0,
+	borderRight: "none",
+};
+
+// Right sidebar (context panel)
+const contextBaseStyle: React.CSSProperties = {
+	flexShrink: 0,
+	overflow: "hidden",
+	transition: "width 0.25s ease, border 0.25s ease",
+};
+
+const contextOpenStyle: React.CSSProperties = {
+	...contextBaseStyle,
+	width: 260,
+	borderLeft: "1px solid var(--border)",
+	background: "var(--surface)",
+};
+
+const contextClosedStyle: React.CSSProperties = {
+	...contextBaseStyle,
+	width: 0,
+	borderLeft: "none",
 };
 
 const cardStyle: React.CSSProperties = {
