@@ -18,6 +18,7 @@ export interface UseAgentWebSocketResult {
 	status: ConnectionStatus;
 	state: WebSessionState | null;
 	lastError: string | null;
+	hasInitialState: boolean;
 	send: (msg: unknown) => void;
 	connect: () => void;
 	disconnect: () => void;
@@ -25,24 +26,32 @@ export interface UseAgentWebSocketResult {
 
 interface UseAgentWebSocketOptions {
 	url: string;
+	autoConnect?: boolean;
 	onEvent?: (event: AgentSessionEvent) => void;
 	onStateChange?: (state: WebSessionState) => void;
 	onError?: (message: string) => void;
 }
 
+const MAX_RECONNECT_DELAY = 16_000;
+const BASE_RECONNECT_DELAY = 1_000;
+
 export function useAgentWebSocket(options: UseAgentWebSocketOptions): UseAgentWebSocketResult {
-	const { url, onEvent, onStateChange, onError } = options;
+	const { url, autoConnect = true, onEvent, onStateChange, onError } = options;
 	const wsRef = useRef<WebSocket | null>(null);
 	const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+	const reconnectAttemptRef = useRef(0);
+	const disconnectRef = useRef(false);
 	const [status, setStatus] = useState<ConnectionStatus>("disconnected");
 	const [state, setState] = useState<WebSessionState | null>(null);
 	const [lastError, setLastError] = useState<string | null>(null);
+	const [hasInitialState, setHasInitialState] = useState(false);
 
 	const connect = useCallback(() => {
 		if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) {
 			return;
 		}
 
+		disconnectRef.current = false;
 		setStatus("connecting");
 		setLastError(null);
 
@@ -52,6 +61,7 @@ export function useAgentWebSocket(options: UseAgentWebSocketOptions): UseAgentWe
 
 			ws.onopen = () => {
 				setStatus("connected");
+				reconnectAttemptRef.current = 0;
 			};
 
 			ws.onmessage = (event: MessageEvent) => {
@@ -61,6 +71,7 @@ export function useAgentWebSocket(options: UseAgentWebSocketOptions): UseAgentWe
 					switch (msg.type) {
 						case "state":
 							setState(msg.state);
+							setHasInitialState(true);
 							onStateChange?.(msg.state);
 							break;
 						case "event":
@@ -79,6 +90,18 @@ export function useAgentWebSocket(options: UseAgentWebSocketOptions): UseAgentWe
 			ws.onclose = () => {
 				setStatus("disconnected");
 				wsRef.current = null;
+
+				// Auto-reconnect unless intentionally disconnected
+				if (!disconnectRef.current && reconnectAttemptRef.current < 5) {
+					const delay = Math.min(
+						BASE_RECONNECT_DELAY * Math.pow(2, reconnectAttemptRef.current),
+						MAX_RECONNECT_DELAY,
+					);
+					reconnectAttemptRef.current++;
+					reconnectTimerRef.current = setTimeout(() => {
+						connect();
+					}, delay);
+				}
 			};
 
 			ws.onerror = () => {
@@ -92,6 +115,7 @@ export function useAgentWebSocket(options: UseAgentWebSocketOptions): UseAgentWe
 	}, [url, onEvent, onStateChange, onError]);
 
 	const disconnect = useCallback(() => {
+		disconnectRef.current = true;
 		if (reconnectTimerRef.current) {
 			clearTimeout(reconnectTimerRef.current);
 			reconnectTimerRef.current = undefined;
@@ -99,6 +123,7 @@ export function useAgentWebSocket(options: UseAgentWebSocketOptions): UseAgentWe
 		wsRef.current?.close();
 		wsRef.current = null;
 		setStatus("disconnected");
+		setHasInitialState(false);
 	}, []);
 
 	const send = useCallback((msg: unknown) => {
@@ -107,11 +132,17 @@ export function useAgentWebSocket(options: UseAgentWebSocketOptions): UseAgentWe
 		}
 	}, []);
 
+	// Auto-connect on mount when autoConnect is true
 	useEffect(() => {
+		if (autoConnect) {
+			connect();
+		}
 		return () => {
 			disconnect();
 		};
-	}, [disconnect]);
+	// Only run on mount
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
 
-	return { status, state, lastError, send, connect, disconnect };
+	return { status, state, lastError, hasInitialState, send, connect, disconnect };
 }

@@ -118,8 +118,18 @@ export class WebSessionBridge {
 	}
 
 	private async setModel(provider: string, modelId: string): Promise<void> {
+		// Refresh registry first so newly added models are visible
+		this.session.modelRegistry.refresh();
 		const model = this.session.modelRegistry.find(provider, modelId);
 		if (!model) {
+			// Try fuzzy match: if modelId matches a unique model across all providers
+			const all = this.session.modelRegistry.getAll();
+			const matches = all.filter((m) => m.id === modelId);
+			if (matches.length === 1) {
+				await this.session.setModel(matches[0]);
+				this.sendState();
+				return;
+			}
 			this.sendError(`Model not found: ${provider}/${modelId}`);
 			return;
 		}

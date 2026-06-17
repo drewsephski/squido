@@ -5,6 +5,7 @@
 
 import * as crypto from "node:crypto";
 import * as fs from "node:fs";
+import type { Server } from "node:http";
 import * as os from "node:os";
 import * as path from "node:path";
 import type { AgentMessage } from "@drewsepsi/squido-agent-core";
@@ -57,6 +58,7 @@ import {
 	getDebugLogPath,
 	getDocsPath,
 	getShareViewerUrl,
+	getWebUiDir,
 	VERSION,
 } from "../../config.ts";
 import { type AgentSession, type AgentSessionEvent, parseSkillBlock } from "../../core/agent-session.ts";
@@ -98,6 +100,8 @@ import { killTrackedDetachedChildren } from "../../utils/shell.ts";
 import { getSquidoUserAgent } from "../../utils/squido-user-agent.ts";
 import { ensureTool } from "../../utils/tools-manager.ts";
 import { checkForNewSquidoVersion, type LatestSquidoRelease } from "../../utils/version-check.ts";
+import { createWebServer } from "../web/web-server.ts";
+import { WebSessionBridge } from "../web/web-session-bridge.ts";
 import { ArminComponent } from "./components/armin.ts";
 import { AssistantMessageComponent } from "./components/assistant-message.ts";
 import { BashExecutionComponent } from "./components/bash-execution.ts";
@@ -348,6 +352,9 @@ export class InteractiveMode {
 
 	// Cloud sync state
 	private cloudIntegration: CloudIntegration | null = null;
+	private cloudSyncState: "idle" | "syncing" | "error" = "idle";
+	private cloudSyncError: string | null = null;
+	private cloudSyncPendingCount: number = 0;
 
 	// Shutdown state
 	private shutdownRequested = false;
@@ -366,6 +373,10 @@ export class InteractiveMode {
 
 	// Custom footer from extension (undefined = use built-in footer)
 	private customFooter: (Component & { dispose?(): void }) | undefined = undefined;
+
+	// Embedded web server for Web UI access alongside TUI
+	private webHttpServer: Server | null = null;
+	private wsServer: import("ws").WebSocketServer | null = null;
 
 	// Header container that holds the built-in or custom header
 	private headerContainer: Container;
@@ -632,10 +643,19 @@ export class InteractiveMode {
 				syncStateDir,
 				isCloudEnabled: () => this.settingsManager.getCloudSettings().enabled === true,
 			});
-			// Fire-and-forget the async init — errors are caught at usage time
-			void this.cloudIntegration.ready().catch(() => {
-				this.cloudIntegration = null;
-			});
+			// Wire sync callbacks and show initial cloud status after async init completes
+			void this.cloudIntegration
+				.ready()
+				.then(() => {
+					this.setupCloudSyncCallbacks();
+					this.updateCloudFooterStatus();
+					this.ui.requestRender();
+				})
+				.catch(() => {
+					this.cloudIntegration = null;
+					this.updateCloudFooterStatus();
+					this.ui.requestRender();
+				});
 		} catch {
 			this.cloudIntegration = null;
 		}
@@ -661,7 +681,7 @@ export class InteractiveMode {
 		// Add compact header with web UI link (unless silenced)
 		if (this.options.verbose || !this.settingsManager.getQuietStartup()) {
 			const logo = theme.bold(theme.fg("accent", APP_NAME)) + theme.fg("dim", ` v${this.version}`);
-			const webUrl = "http://127.0.0.1:9878/agent";
+			const webUrl = "http://127.0.0.1:9876/agent";
 			const webLink = hyperlink(theme.fg("dim", webUrl), webUrl);
 			const headerText = `${logo} · Web UI: ${webLink}`;
 			this.builtInHeader = new Text(headerText, 1, 0);
@@ -711,6 +731,9 @@ export class InteractiveMode {
 
 		// Initialize available provider count for footer display
 		await this.updateAvailableProviderCount();
+
+		// Start embedded web server so the Web UI is available alongside the TUI
+		this.startWebServer();
 	}
 
 	/**
@@ -1746,6 +1769,63 @@ export class InteractiveMode {
 	private setExtensionStatus(key: string, text: string | undefined): void {
 		this.footerDataProvider.setExtensionStatus(key, text);
 		this.ui.requestRender();
+	}
+
+	/** Update the cloud status indicator in the footer. */
+	private updateCloudFooterStatus(): void {
+		if (!this.cloudIntegration?.auth) {
+			this.setExtensionStatus("cloud", undefined);
+			return;
+		}
+
+		const status = this.cloudIntegration.getStatus();
+		let text: string;
+
+		if (this.cloudSyncState === "syncing") {
+			const count = this.cloudSyncPendingCount;
+			text = `\u2601 syncing${count > 0 ? ` (${count} remaining)` : ""}`;
+		} else if (this.cloudSyncState === "error") {
+			text = `\u2601 error \u2014 ${this.cloudSyncError ?? "will retry"}`;
+		} else if (!status.enabled) {
+			text = "\u2601 off";
+		} else if (!status.loggedIn) {
+			text = "\u2601 not logged in";
+		} else {
+			text = `\u2601 synced \u00b7 ${status.email ?? "unknown"}`;
+		}
+
+		this.setExtensionStatus("cloud", text);
+	}
+
+	/** Wire sync lifecycle callbacks to update footer status. */
+	private setupCloudSyncCallbacks(): void {
+		if (!this.cloudIntegration) return;
+		this.cloudIntegration.setSyncCallbacks({
+			onSyncStart: (_sessionId, pendingCount) => {
+				this.cloudSyncState = "syncing";
+				this.cloudSyncError = null;
+				this.cloudSyncPendingCount = pendingCount;
+				this.updateCloudFooterStatus();
+			},
+			onSyncComplete: (_sessionId, count) => {
+				this.cloudSyncState = "idle";
+				this.cloudSyncError = null;
+				this.cloudSyncPendingCount = 0;
+				if (count > 0) {
+					this.showStatus(`Synced ${count} entr${count === 1 ? "y" : "ies"} to cloud`);
+				}
+				this.updateCloudFooterStatus();
+			},
+			onSyncError: (_sessionId, err) => {
+				this.cloudSyncState = "error";
+				this.cloudSyncError = err.message;
+				this.cloudSyncPendingCount = 0;
+				this.updateCloudFooterStatus();
+			},
+			onSyncSkipped: () => {
+				// No status change needed — sync was a no-op
+			},
+		});
 	}
 
 	private getWorkingLoaderMessage(): string {
@@ -2982,7 +3062,10 @@ export class InteractiveMode {
 				if (this.cloudIntegration?.isActive) {
 					const sessionId = this.sessionManager.getSessionId();
 					this.cloudIntegration.syncAfterTurn(sessionId).catch((err) => {
-						console.error("Cloud sync failed:", err);
+						this.cloudSyncState = "error";
+						this.cloudSyncError = err instanceof Error ? err.message : String(err);
+						this.cloudSyncPendingCount = 0;
+						this.updateCloudFooterStatus();
 					});
 				}
 
@@ -5832,9 +5915,13 @@ export class InteractiveMode {
 					openBrowser(uri);
 				},
 				onPolling: () => {},
-				onSuccess: () => {
+				onSuccess: (cred) => {
 					this.showStatus("Successfully logged in to Squido Cloud!");
-					this.settingsManager.setCloudSettings({ enabled: true });
+					const cloud = this.settingsManager.getCloudSettings();
+					cloud.enabled = true;
+					cloud.email = cred.email;
+					this.settingsManager.setCloudSettings(cloud);
+					this.updateCloudFooterStatus();
 					this.ui.requestRender();
 				},
 				onError: (err) => {
@@ -5858,6 +5945,7 @@ export class InteractiveMode {
 		this.cloudIntegration.auth.logout();
 		this.settingsManager.setCloudSettings({});
 		this.showStatus("Logged out of Squido Cloud.");
+		this.updateCloudFooterStatus();
 		this.ui.requestRender();
 	}
 
@@ -5868,8 +5956,11 @@ export class InteractiveMode {
 			return;
 		}
 
-		this.settingsManager.setCloudSettings({ enabled: true });
+		const cloud = this.settingsManager.getCloudSettings();
+		cloud.enabled = true;
+		this.settingsManager.setCloudSettings(cloud);
 		this.showStatus("Cloud sync enabled.");
+		this.updateCloudFooterStatus();
 		this.ui.requestRender();
 	}
 
@@ -5880,8 +5971,11 @@ export class InteractiveMode {
 			return;
 		}
 
-		this.settingsManager.setCloudSettings({ enabled: false });
+		const cloud = this.settingsManager.getCloudSettings();
+		cloud.enabled = false;
+		this.settingsManager.setCloudSettings(cloud);
 		this.showStatus("Cloud sync disabled.");
+		this.updateCloudFooterStatus();
 		this.ui.requestRender();
 	}
 	private async handleClearCommand(): Promise<void> {
@@ -6071,6 +6165,7 @@ export class InteractiveMode {
 	}
 
 	stop(): void {
+		this.stopWebServer();
 		this.unregisterSignalHandlers();
 		if (this.settingsManager.getShowTerminalProgress()) {
 			this.ui.terminal.setProgress(false);
@@ -6088,6 +6183,74 @@ export class InteractiveMode {
 		if (this.isInitialized) {
 			this.ui.stop();
 			this.isInitialized = false;
+		}
+	}
+
+	/**
+	 * Start an embedded web server alongside the TUI so the Web UI
+	 * (http://127.0.0.1:9876/agent) is always available.
+	 */
+	private startWebServer(): void {
+		try {
+			const staticDir = getWebUiDir();
+			if (!staticDir) {
+				// web-ui not built yet — skip silently
+				return;
+			}
+
+			const { httpServer, wsServer } = createWebServer({
+				host: "127.0.0.1",
+				port: 9876,
+				staticDir,
+				openBrowser: false,
+				getModels: () => {
+					const registry = this.session.modelRegistry;
+					registry.refresh();
+					return registry.getAll().map((m) => ({
+						provider: m.provider,
+						id: m.id,
+						name: m.name,
+						contextWindow: m.contextWindow,
+						reasoning: m.reasoning,
+						input: m.input,
+					}));
+				},
+			});
+
+			this.wsServer = wsServer;
+			this.webHttpServer = httpServer;
+
+			// Bridge new WebSocket connections to the agent session
+			wsServer.on("connection", (ws) => {
+				const bridge = new WebSessionBridge(ws, this.session);
+				bridge.attach();
+			});
+
+			httpServer.listen(9876, "127.0.0.1");
+		} catch {
+			// Web server is non-critical — TUI continues regardless
+		}
+	}
+
+	/**
+	 * Stop the embedded web server.
+	 */
+	private stopWebServer(): void {
+		if (this.wsServer) {
+			try {
+				this.wsServer.close();
+			} catch {
+				// ignore
+			}
+			this.wsServer = null;
+		}
+		if (this.webHttpServer) {
+			try {
+				this.webHttpServer.close();
+			} catch {
+				// ignore
+			}
+			this.webHttpServer = null;
 		}
 	}
 }

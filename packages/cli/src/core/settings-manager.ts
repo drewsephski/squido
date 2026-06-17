@@ -122,6 +122,8 @@ export interface Settings {
 	/** Cloud sync settings. Undefined = feature not available (cloud package not installed). */
 	cloud?: {
 		enabled?: boolean; // default: false
+		/** User's email from cloud auth, persisted for footer display. */
+		email?: string;
 	};
 }
 

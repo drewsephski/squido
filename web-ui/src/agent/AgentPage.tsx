@@ -5,6 +5,7 @@ import { ChatInput } from "./ChatInput.tsx";
 import { StatusBar } from "./StatusBar.tsx";
 import { ContextPanel } from "./ContextPanel.tsx";
 import { SessionSidebar } from "./SessionSidebar.tsx";
+import { ConnectScreen } from "./ConnectScreen.tsx";
 import "./agent.css";
 
 const WS_URL = `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/ws`;
@@ -70,7 +71,6 @@ export function AgentPage() {
 		isRunning: boolean;
 		isError: boolean;
 	}>>(new Map());
-
 
 	const handleEvent = useCallback((event: AgentSessionEvent) => {
 		switch (event.type) {
@@ -247,12 +247,15 @@ export function AgentPage() {
 		}
 	}, []);
 
-	const handleStateChange = useCallback(() => {}, []);
+	const handleStateChange = useCallback(() => {
+		// State is propagated through the hook's internal state — no extra work needed
+	}, []);
 
 	const handleError = useCallback((_message: string) => {}, []);
 
-	const { status, state, send, connect, disconnect } = useAgentWebSocket({
+	const { status, state, lastError, hasInitialState, send, connect, disconnect } = useAgentWebSocket({
 		url: WS_URL,
+		autoConnect: true,
 		onEvent: handleEvent,
 		onStateChange: handleStateChange,
 		onError: handleError,
@@ -290,6 +293,7 @@ export function AgentPage() {
 			});
 	}, []);
 
+	// Fetch models on mount
 	useEffect(() => {
 		fetchModels();
 	}, [fetchModels]);
@@ -305,13 +309,27 @@ export function AgentPage() {
 
 	// Clear optimistic model when server state catches up
 	useEffect(() => {
-		if (optimisticModel && state?.model && state.model.provider === optimisticModel.provider && state.model.id === optimisticModel.id) {
+		if (
+			optimisticModel &&
+			state?.model &&
+			state.model.provider === optimisticModel.provider &&
+			state.model.id === optimisticModel.id
+		) {
 			setOptimisticModel(null);
 		}
 	}, [state, optimisticModel]);
 
+	// Flush queued prompts once connected
+	useEffect(() => {
+		if (status === "connected" && promptQueueRef.current.length > 0) {
+			for (const p of promptQueueRef.current) {
+				send({ type: "prompt", text: p });
+			}
+			promptQueueRef.current = [];
+		}
+	}, [status, send]);
+
 	const handleSend = useCallback((text: string) => {
-		// Intercept slash commands for local handling
 		const cmd = text.split(" ")[0].toLowerCase();
 		const args = text.slice(cmd.length).trim();
 
@@ -328,7 +346,6 @@ export function AgentPage() {
 				if (args && ["off", "low", "medium", "high"].includes(args)) {
 					send({ type: "set_thinking", level: args });
 				} else {
-					// Show thinking levels in a help message
 					const thinkingMsg: DisplayMessage = {
 						id: uid(),
 						role: "assistant",
@@ -382,11 +399,9 @@ export function AgentPage() {
 
 			case "/changelog":
 			case "/export":
-				// Send these to the AI for handling
 				break;
 
 			default:
-				// If it starts with / but isn't recognized, treat it as a prompt
 				if (cmd.startsWith("/")) {
 					const unknownMsg: DisplayMessage = {
 						id: uid(),
@@ -398,7 +413,6 @@ export function AgentPage() {
 				}
 		}
 
-		// Default: send as prompt to the agent
 		const userMsg: DisplayMessage = {
 			id: uid(),
 			role: "user",
@@ -408,7 +422,6 @@ export function AgentPage() {
 		send({ type: "prompt", text });
 	}, [send, state]);
 
-	// Handle clicking an example prompt: auto-connect if needed, queue message
 	const handlePromptClick = useCallback((text: string) => {
 		const userMsg: DisplayMessage = {
 			id: uid(),
@@ -424,16 +437,6 @@ export function AgentPage() {
 			promptQueueRef.current.push(text);
 		}
 	}, [send, connect, status]);
-
-	// Flush queued prompts once connected
-	useEffect(() => {
-		if (status === "connected" && promptQueueRef.current.length > 0) {
-			for (const p of promptQueueRef.current) {
-				send({ type: "prompt", text: p });
-			}
-			promptQueueRef.current = [];
-		}
-	}, [status, send]);
 
 	const handleSetThinking = useCallback((level: string) => {
 		send({ type: "set_thinking", level });
@@ -456,6 +459,17 @@ export function AgentPage() {
 
 	const isConnected = status === "connected";
 	const effectiveModel = optimisticModel ?? state?.model ?? null;
+
+	// Show connect screen when not connected and no initial state received yet
+	if (!isConnected && !hasInitialState) {
+		return (
+			<ConnectScreen
+				status={status}
+				lastError={lastError}
+				onConnect={connect}
+			/>
+		);
+	}
 
 	return (
 		<div className="agent-workspace">
@@ -549,6 +563,7 @@ export function AgentPage() {
 						placeholder={
 							status === "connected"
 								? isStreaming ? "Waiting for agent..." : "Ask Squido to do something..."
+								: status === "connecting" ? "Connecting..."
 								: "Connect to start..."
 						}
 					/>
