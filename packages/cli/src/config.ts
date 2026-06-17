@@ -440,13 +440,18 @@ export function getBundledInteractiveAssetPath(name: string): string {
 }
 
 // =============================================================================
-// App Config (from package.json piConfig)
+// App Config (from package.json squidoConfig)
 // =============================================================================
 
 interface PackageJson {
 	name?: string;
 	version?: string;
+	/** @deprecated Use squidoConfig instead */
 	piConfig?: {
+		name?: string;
+		configDir?: string;
+	};
+	squidoConfig?: {
 		name?: string;
 		configDir?: string;
 	};
@@ -460,11 +465,13 @@ try {
 	if (err.code !== "ENOENT") throw e;
 }
 
-const piConfigName: string | undefined = pkg.piConfig?.name;
+// Backward compat: check squidoConfig first, then fall back to piConfig
+const appConfig = pkg.squidoConfig ?? pkg.piConfig;
+const configName: string | undefined = appConfig?.name;
 export const PACKAGE_NAME: string = pkg.name || "@drewsepsi/squido-cli";
-export const APP_NAME: string = piConfigName || "squido";
-export const APP_TITLE: string = piConfigName ? APP_NAME : "squido";
-export const CONFIG_DIR_NAME: string = pkg.piConfig?.configDir || ".squido";
+export const APP_NAME: string = configName || "squido";
+export const APP_TITLE: string = configName ? APP_NAME : "squido";
+export const CONFIG_DIR_NAME: string = appConfig?.configDir || ".squido";
 export const VERSION: string = pkg.version || "0.0.0";
 
 // e.g., SQUIDO_CLI_DIR or TAU_CODING_AGENT_DIR
@@ -480,7 +487,7 @@ const DEFAULT_SHARE_VIEWER_URL = "https://squidagent.app/session/";
 /** Get the share viewer URL for a gist ID */
 export function getShareViewerUrl(gistId: string): string {
 	const baseUrl = process.env.SQUIDO_SHARE_VIEWER_URL || DEFAULT_SHARE_VIEWER_URL;
-	return `${baseUrl}#${gistId}`;
+	return `${baseUrl}${gistId}`;
 }
 
 // =============================================================================

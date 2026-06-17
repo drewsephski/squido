@@ -142,7 +142,7 @@ Options:
 Short forms:
   ${APP_NAME} update                Update squido and all extensions
   ${APP_NAME} update <source>       Update one package
-  ${APP_NAME} update pi             Update squido only (self works as alias to pi)
+  ${APP_NAME} update pi             Update squido only ('pi' is a backward compat alias)
 `);
 			return;
 

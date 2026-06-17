@@ -4,17 +4,17 @@
  *
  * Extends the existing HTML export pipeline with:
  * - Redaction layer (strips sensitive content by default)
- * - User curation checklist
  * - Comparison template support
  */
 
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { basename, join } from "node:path";
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { APP_NAME, getExportTemplateDir } from "../../config.ts";
 import { getResolvedThemeColors, getThemeExportColors } from "../../modes/interactive/theme/theme.ts";
 import type { ComparisonResult } from "../compare-types.ts";
-import type { SessionEntry } from "../session-manager.ts";
-import type { ExportOptions } from "./index.ts";
+import type { SessionEntry, SessionHeader } from "../session-manager.ts";
+import type { ExportOptions, SessionData } from "./index.ts";
+import { generateHtml } from "./index.ts";
 import {
 	createDefaultRedactionConfig,
 	type RedactionConfig,
@@ -36,13 +36,11 @@ export interface PublishOptions extends ExportOptions {
 	/** Session entries to publish */
 	entries?: SessionEntry[];
 	/** Session header info */
-	sessionHeader?: {
-		id: string;
-		timestamp: string;
-		cwd?: string;
-	};
+	sessionHeader?: SessionHeader | null;
 	/** System prompt */
 	systemPrompt?: string;
+	/** Current leaf ID for the session tree */
+	leafId?: string | null;
 }
 
 /**
@@ -57,38 +55,26 @@ export interface PublishResult {
 	redactedCount: number;
 }
 
-/**
- * Generate theme CSS variables for export.
- */
-function generateThemeVars(themeName?: string): string {
-	const colors = getResolvedThemeColors(themeName);
-	const lines: string[] = [];
-	for (const [key, value] of Object.entries(colors)) {
-		lines.push(`--${key}: ${value};`);
+/** Derive export background colors from a base color. Duplicated here to avoid circular import issues. */
+function deriveExportColors(baseColor: string): { pageBg: string; cardBg: string; infoBg: string } {
+	const parsed = parseColor(baseColor);
+	if (!parsed) {
+		return { pageBg: "rgb(24, 24, 30)", cardBg: "rgb(30, 30, 36)", infoBg: "rgb(60, 55, 40)" };
 	}
-
-	const themeExport = getThemeExportColors(themeName);
-	const userMessageBg = colors.userMessageBg || "#343541";
-	const parsed = parseColor(userMessageBg);
-
-	if (parsed) {
-		const luminance = getLuminance(parsed.r, parsed.g, parsed.b);
-		const isLight = luminance > 0.5;
-		const pageBg =
-			themeExport.pageBg ?? (isLight ? adjustBrightness(userMessageBg, 0.96) : adjustBrightness(userMessageBg, 0.7));
-		const cardBg = themeExport.cardBg ?? (isLight ? userMessageBg : adjustBrightness(userMessageBg, 0.85));
-		const infoBg =
-			themeExport.infoBg ??
-			(isLight
-				? `rgb(${Math.min(255, parsed.r + 10)}, ${Math.min(255, parsed.g + 5)}, ${Math.max(0, parsed.b - 20)})`
-				: `rgb(${Math.min(255, parsed.r + 20)}, ${Math.min(255, parsed.g + 15)}, ${parsed.b})`);
-
-		lines.push(`--exportPageBg: ${pageBg};`);
-		lines.push(`--exportCardBg: ${cardBg};`);
-		lines.push(`--exportInfoBg: ${infoBg};`);
+	const luminance = getLuminance(parsed.r, parsed.g, parsed.b);
+	const isLight = luminance > 0.5;
+	if (isLight) {
+		return {
+			pageBg: adjustBrightness(baseColor, 0.96),
+			cardBg: baseColor,
+			infoBg: `rgb(${Math.min(255, parsed.r + 10)}, ${Math.min(255, parsed.g + 5)}, ${Math.max(0, parsed.b - 20)})`,
+		};
 	}
-
-	return lines.join("\n      ");
+	return {
+		pageBg: adjustBrightness(baseColor, 0.7),
+		cardBg: adjustBrightness(baseColor, 0.85),
+		infoBg: `rgb(${Math.min(255, parsed.r + 20)}, ${Math.min(255, parsed.g + 15)}, ${parsed.b})`,
+	};
 }
 
 /** Parse a color string to RGB values. Supports hex (#RRGGBB) and rgb(r,g,b) formats. */
@@ -130,6 +116,27 @@ function adjustBrightness(color: string, factor: number): string {
 }
 
 /**
+ * Generate theme CSS variables for comparison export.
+ */
+function generateComparisonThemeVars(themeName?: string): string {
+	const colors = getResolvedThemeColors(themeName);
+	const lines: string[] = [];
+	for (const [key, value] of Object.entries(colors)) {
+		lines.push(`--${key}: ${value};`);
+	}
+
+	const themeExport = getThemeExportColors(themeName);
+	const userMessageBg = colors.userMessageBg || "#343541";
+	const derived = deriveExportColors(userMessageBg);
+
+	lines.push(`--exportPageBg: ${themeExport.pageBg ?? derived.pageBg};`);
+	lines.push(`--exportCardBg: ${themeExport.cardBg ?? derived.cardBg};`);
+	lines.push(`--exportInfoBg: ${themeExport.infoBg ?? derived.infoBg};`);
+
+	return lines.join("\n      ");
+}
+
+/**
  * Generate comparison HTML from result data.
  */
 function generateComparisonHtml(comparisonData: ComparisonResult, themeName?: string): string {
@@ -140,21 +147,15 @@ function generateComparisonHtml(comparisonData: ComparisonResult, themeName?: st
 	const markedJs = readFileSync(join(templateDir, "vendor", "marked.min.js"), "utf-8");
 	const hljsJs = readFileSync(join(templateDir, "vendor", "highlight.min.js"), "utf-8");
 
-	const themeVars = generateThemeVars(themeName);
+	const themeVars = generateComparisonThemeVars(themeName);
 	const colors = getResolvedThemeColors(themeName);
 	const themeExport = getThemeExportColors(themeName);
 	const userMessageBg = colors.userMessageBg || "#343541";
-	const parsed = parseColor(userMessageBg);
-	const luminance = parsed ? getLuminance(parsed.r, parsed.g, parsed.b) : 0.5;
-	const isLight = luminance > 0.5;
-	const bodyBg =
-		themeExport.pageBg ?? (isLight ? adjustBrightness(userMessageBg, 0.96) : adjustBrightness(userMessageBg, 0.7));
-	const containerBg = themeExport.cardBg ?? (isLight ? userMessageBg : adjustBrightness(userMessageBg, 0.85));
-	const infoBg =
-		themeExport.infoBg ??
-		(isLight
-			? `rgb(${Math.min(255, (parsed?.r ?? 50) + 10)}, ${Math.min(255, (parsed?.g ?? 50) + 5)}, ${Math.max(0, (parsed?.b ?? 50) - 20)})`
-			: `rgb(${Math.min(255, (parsed?.r ?? 50) + 20)}, ${Math.min(255, (parsed?.g ?? 50) + 15)}, ${parsed?.b ?? 50})`);
+	const derived = deriveExportColors(userMessageBg);
+
+	const bodyBg = themeExport.pageBg ?? derived.pageBg;
+	const containerBg = themeExport.cardBg ?? derived.cardBg;
+	const infoBg = themeExport.infoBg ?? derived.infoBg;
 
 	// Base64 encode comparison data
 	const dataBase64 = Buffer.from(JSON.stringify(comparisonData)).toString("base64");
@@ -176,46 +177,61 @@ function generateComparisonHtml(comparisonData: ComparisonResult, themeName?: st
 /**
  * Publish a session as a redacted HTML artifact.
  * Uses the comparison template when comparisonData is provided,
- * otherwise uses the regular session export template.
+ * otherwise uses the regular session export template via generateHtml.
  */
 export async function publishSession(options: PublishOptions): Promise<PublishResult> {
-	const { redact = true, redactionConfig, comparisonData, entries = [], themeName, outputPath } = options;
-
-	let secretWarnings: SecretWarning[] = [];
-	let redactedCount = 0;
-	let finalEntries = entries;
-
-	if (redact) {
-		const config = redactionConfig ?? createDefaultRedactionConfig();
-
-		// Scan for secrets
-		if (config.scanForSecrets) {
-			secretWarnings = scanEntriesForSecrets(entries);
-		}
-
-		// Apply redaction
-		const entryCountBefore = finalEntries.length;
-		finalEntries = redactEntries(finalEntries, config);
-		redactedCount = entryCountBefore - finalEntries.length;
-	}
+	const {
+		redact = true,
+		redactionConfig,
+		comparisonData,
+		entries = [],
+		sessionHeader,
+		systemPrompt,
+		leafId,
+		themeName,
+		outputPath,
+	} = options;
 
 	let html: string;
+
 	if (comparisonData) {
+		// Comparison publish uses the comparison template
 		html = generateComparisonHtml(comparisonData, themeName);
 	} else {
-		// Use regular session export for non-comparison publishes
-		const { exportSessionToHtml } = await import("./index.ts");
-		const tempPath = outputPath ?? `${APP_NAME}-publish.html`;
-		// For simplicity, if we have entries, we generate inline
-		html = generateComparisonHtml(
-			{
-				prompt: "Session Export",
-				results: [],
-				timestamp: new Date().toISOString(),
-				label: "Session Artifact",
-			},
-			themeName,
-		);
+		// Apply redaction before generating HTML
+		let secretWarnings: SecretWarning[] = [];
+		let redactedCount = 0;
+		let finalEntries = entries;
+
+		if (redact) {
+			const config = redactionConfig ?? createDefaultRedactionConfig();
+
+			if (config.scanForSecrets) {
+				secretWarnings = scanEntriesForSecrets(entries);
+			}
+
+			const entryCountBefore = finalEntries.length;
+			finalEntries = redactEntries(finalEntries, config);
+			redactedCount = entryCountBefore - finalEntries.length;
+		}
+
+		const sessionData: SessionData = {
+			header: sessionHeader ?? { type: "session", id: "publish", timestamp: new Date().toISOString(), cwd: "" },
+			entries: finalEntries,
+			leafId: leafId ?? null,
+			systemPrompt,
+		};
+
+		html = generateHtml(sessionData, themeName);
+
+		const resolvedPath = outputPath ?? `${APP_NAME}-publish-${Date.now()}.html`;
+		writeFileSync(resolvedPath, html, "utf8");
+
+		return {
+			filePath: resolvedPath,
+			secretWarnings,
+			redactedCount,
+		};
 	}
 
 	const resolvedPath = outputPath ?? `${APP_NAME}-publish-${Date.now()}.html`;
@@ -223,7 +239,7 @@ export async function publishSession(options: PublishOptions): Promise<PublishRe
 
 	return {
 		filePath: resolvedPath,
-		secretWarnings,
-		redactedCount,
+		secretWarnings: [],
+		redactedCount: 0,
 	};
 }

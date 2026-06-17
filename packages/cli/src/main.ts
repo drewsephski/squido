@@ -509,6 +509,12 @@ export async function main(args: string[], options?: MainOptions) {
 	}
 
 	let appMode = resolveAppMode(parsed, process.stdin.isTTY, process.stdout.isTTY);
+
+	// --demo forces interactive mode regardless of TTY detection
+	if (parsed.demo) {
+		appMode = "interactive";
+	}
+
 	const shouldTakeOverStdout = appMode !== "interactive" && !isPlainRuntimeMetadataCommand(parsed);
 	if (shouldTakeOverStdout) {
 		takeOverStdout();
@@ -516,6 +522,11 @@ export async function main(args: string[], options?: MainOptions) {
 
 	if (parsed.mode === "rpc" && parsed.fileArgs.length > 0) {
 		console.error(chalk.red("Error: @file arguments are not supported in RPC mode"));
+		process.exit(1);
+	}
+
+	if (parsed.demo && parsed.mode !== undefined) {
+		console.error(chalk.red("Error: --demo cannot be combined with --mode"));
 		process.exit(1);
 	}
 
@@ -531,10 +542,39 @@ export async function main(args: string[], options?: MainOptions) {
 	const startupSettingsManager = SettingsManager.create(cwd, agentDir);
 	reportDiagnostics(collectSettingsDiagnostics(startupSettingsManager, "startup session lookup"));
 
-	// Experimental first-time setup: theme choice and analytics opt-in.
+	// Create auth storage early to detect configured providers before setup
+	const authStorage = AuthStorage.create();
+
+	// Check which providers already have credentials
+	const configuredProviders: string[] = [];
+	const KNOWN_PROVIDERS = [
+		"anthropic",
+		"openai",
+		"google",
+		"deepseek",
+		"groq",
+		"mistral",
+		"xai",
+		"openrouter",
+		"github-copilot",
+		"cerebras",
+		"fireworks",
+		"together",
+	];
+	for (const provider of KNOWN_PROVIDERS) {
+		if (authStorage.hasAuth(provider)) {
+			configuredProviders.push(provider);
+		}
+	}
+
+	// First-time setup: welcome, provider config, theme, and analytics opt-in.
 	// Runs before any runtime services are created so the chosen settings apply everywhere.
 	if (appMode === "interactive" && !parsed.help && parsed.listModels === undefined && shouldRunFirstTimeSetup()) {
-		await showFirstTimeSetup(startupSettingsManager);
+		await showFirstTimeSetup(startupSettingsManager, {
+			hasConfiguredProviders: configuredProviders.length > 0,
+			configuredProviders,
+			authStorage,
+		});
 		time("firstTimeSetup");
 	}
 
@@ -583,7 +623,6 @@ export async function main(args: string[], options?: MainOptions) {
 	const resolvedSkillPaths = resolveCliPaths(cwd, parsed.skills);
 	const resolvedPromptTemplatePaths = resolveCliPaths(cwd, parsed.promptTemplates);
 	const resolvedThemePaths = resolveCliPaths(cwd, parsed.themes);
-	const authStorage = AuthStorage.create();
 	const createRuntime: CreateAgentSessionRuntimeFactory = async ({
 		cwd,
 		agentDir,
@@ -796,6 +835,7 @@ export async function main(args: string[], options?: MainOptions) {
 			initialImages,
 			initialMessages: parsed.messages,
 			verbose: parsed.verbose,
+			demo: parsed.demo,
 		});
 		if (startupBenchmark) {
 			await interactiveMode.init();

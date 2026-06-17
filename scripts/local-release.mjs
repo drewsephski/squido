@@ -6,10 +6,10 @@ import { isAbsolute, join, relative, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
 const packages = [
-	{ directory: "packages/ai", name: "@earendil-works/pi-ai" },
-	{ directory: "packages/tui", name: "@earendil-works/pi-tui" },
-	{ directory: "packages/agent", name: "@earendil-works/pi-agent-core" },
-	{ directory: "packages/coding-agent", name: "@earendil-works/pi-coding-agent" },
+	{ directory: "packages/ai", name: "@drewsepsi/squido-ai" },
+	{ directory: "packages/tui", name: "@drewsepsi/squido-tui" },
+	{ directory: "packages/agent", name: "@drewsepsi/squido-agent-core" },
+	{ directory: "packages/cli", name: "@drewsepsi/squido-cli" },
 ];
 
 function printUsage() {

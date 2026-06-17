@@ -1,5 +1,5 @@
 /**
- * TUI config selector for `pi config` command
+ * TUI config selector for `squido config` command
  */
 
 import { ProcessTerminal, TUI } from "@drewsepsi/squido-tui";

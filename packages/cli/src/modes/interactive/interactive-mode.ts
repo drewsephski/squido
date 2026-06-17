@@ -262,6 +262,8 @@ export interface InteractiveModeOptions {
 	initialMessages?: string[];
 	/** Force verbose startup (overrides quietStartup setting) */
 	verbose?: boolean;
+	/** Start in demo mode (guided walkthrough without provider config) */
+	demo?: boolean;
 }
 
 export class InteractiveMode {
@@ -619,16 +621,24 @@ export class InteractiveMode {
 		const [fdPath] = await Promise.all([ensureTool("fd"), ensureTool("rg")]);
 		this.fdPath = fdPath;
 
-		// Initialize cloud sync integration
+		// Initialize cloud sync integration (optional — fails silently if @drewsepsi/squido-cloud is not installed)
 		// Uses a getter so settings changes (via /cloud enable) are reflected live
 		const syncStateDir = path.join(getAgentDir(), "cloud-sync-state");
-		this.cloudIntegration = new CloudIntegration({
-			baseUrl: "https://squido-cloud-api.drewsepeczi.workers.dev",
-			authStorage: this.runtimeHost.services.authStorage as import("../../core/cloud/index.ts").AuthStorageLike,
-			sessionManager: this.sessionManager,
-			syncStateDir,
-			isCloudEnabled: () => this.settingsManager.getCloudSettings().enabled === true,
-		});
+		try {
+			this.cloudIntegration = new CloudIntegration({
+				baseUrl: "https://squido-cloud-api.drewsepeczi.workers.dev",
+				authStorage: this.runtimeHost.services.authStorage as import("../../core/cloud/index.ts").AuthStorageLike,
+				sessionManager: this.sessionManager,
+				syncStateDir,
+				isCloudEnabled: () => this.settingsManager.getCloudSettings().enabled === true,
+			});
+			// Fire-and-forget the async init — errors are caught at usage time
+			void this.cloudIntegration.ready().catch(() => {
+				this.cloudIntegration = null;
+			});
+		} catch {
+			this.cloudIntegration = null;
+		}
 
 		if (this.session.scopedModels.length > 0 && this.options.verbose) {
 			const modelList = this.session.scopedModels
@@ -757,7 +767,7 @@ export class InteractiveMode {
 		}
 
 		if (modelFallbackMessage) {
-			this.showWarning(modelFallbackMessage);
+			this.showWelcomeNoModel();
 		}
 
 		void this.maybeWarnAboutAnthropicSubscriptionAuth();
@@ -786,6 +796,13 @@ export class InteractiveMode {
 		// Main interactive loop
 		while (true) {
 			const userInput = await this.getUserInput();
+
+			// Check if model is configured before prompting
+			if (!this.agent.state.model) {
+				this.showPromptNoModel();
+				continue;
+			}
+
 			try {
 				await this.session.prompt(userInput);
 			} catch (error: unknown) {
@@ -793,6 +810,42 @@ export class InteractiveMode {
 				this.showError(errorMessage);
 			}
 		}
+	}
+
+	/** Show welcome guidance when no model is configured */
+	private showWelcomeNoModel(): void {
+		const welcomeText = [
+			theme.bold(theme.fg("accent", `Welcome to ${APP_NAME}`)),
+			"",
+			"Squido is an open-source AI coding agent for the terminal.",
+			"It reads files, runs commands, edits code, and works with",
+			"40+ AI providers — switching between them without losing context.",
+			"",
+			theme.bold("To get started, configure a provider:"),
+			"",
+			`  ${theme.fg("accent", "/login")}       — Authenticate via OAuth (Claude, OpenAI, GitHub Copilot)`,
+			`  ${theme.fg("accent", "/model")}      — Select a model`,
+			"",
+			`Or set an API key in your environment, e.g.:`,
+			"",
+			`  export ANTHROPIC_API_KEY=sk-ant-...`,
+			`  ${APP_NAME}`,
+			"",
+			theme.fg("dim", "Once configured, try /model anthropic/claude-sonnet"),
+			theme.fg("dim", "then /model openai/gpt-5 to see model switching in action."),
+		].join("\n");
+
+		this.chatContainer.addChild(new Spacer(1));
+		this.chatContainer.addChild(new Text(welcomeText, 1, 0));
+		this.chatContainer.addChild(new Spacer(1));
+		this.ui.requestRender();
+	}
+
+	/** Show guidance when user tries to prompt without a model */
+	private showPromptNoModel(): void {
+		this.showWarning(
+			"Please configure a provider first. Use /login to authenticate or set an API key environment variable.",
+		);
 	}
 
 	private async checkForPackageUpdates(): Promise<string[]> {
@@ -2476,7 +2529,7 @@ export class InteractiveMode {
 			// Write to temp file
 			const tmpDir = os.tmpdir();
 			const ext = extensionForImageMimeType(image.mimeType) ?? "png";
-			const fileName = `pi-clipboard-${crypto.randomUUID()}.${ext}`;
+			const fileName = `squido-clipboard-${crypto.randomUUID()}.${ext}`;
 			const filePath = path.join(tmpDir, fileName);
 			fs.writeFileSync(filePath, Buffer.from(image.bytes));
 
@@ -3472,7 +3525,7 @@ export class InteractiveMode {
 
 		// Restore the terminal before the process dies on any uncaught throw.
 		// Without this, an unhandled exception from extension code (or anywhere
-		// in pi) leaves the terminal in raw mode with no cursor.
+		// in squido) leaves the terminal in raw mode with no cursor.
 		const uncaughtExceptionHandler = (error: Error) => this.uncaughtCrash(error);
 		process.prependListener("uncaughtException", uncaughtExceptionHandler);
 		this.signalCleanupHandlers.push(() => process.off("uncaughtException", uncaughtExceptionHandler));
@@ -3660,7 +3713,7 @@ export class InteractiveMode {
 			// Split by space to support editor arguments (e.g., "code --wait")
 			const [editor, ...editorArgs] = editorCmd.split(" ");
 
-			process.stdout.write(`Launching external editor: ${editorCmd}\nPi will resume when the editor exits.\n`);
+			process.stdout.write(`Launching external editor: ${editorCmd}\nSquido will resume when the editor exits.\n`);
 
 			// Do not use spawnSync here. On Windows, synchronous child_process calls can keep
 			// Node/libuv's console input read active after ui.stop() pauses stdin, racing
@@ -4250,7 +4303,7 @@ export class InteractiveMode {
 					trustStore.setMany(selection.updates);
 					done();
 					this.showStatus(
-						`Saved trust decision: ${selection.trusted ? "trusted" : "untrusted"}. Restart pi for this to take effect.`,
+						`Saved trust decision: ${selection.trusted ? "trusted" : "untrusted"}. Restart squido for this to take effect.`,
 					);
 				},
 				onCancel: () => {
@@ -5301,11 +5354,19 @@ export class InteractiveMode {
 				}
 			}
 
+			// Get session context for proper HTML generation
+			const sm = this.session.sessionManager;
+			const header = sm.getHeader();
+			const systemPrompt = this.session.systemPrompt;
+
 			const result = await publishSession({
 				entries,
 				comparisonData,
 				redact: true,
 				outputPath,
+				sessionHeader: header ?? undefined,
+				leafId: sm.getLeafId(),
+				systemPrompt,
 			});
 
 			let message = `Published to: ${result.filePath}`;

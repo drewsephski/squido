@@ -6,7 +6,7 @@ See [AGENTS.md](https://github.com/drewsephski/squido/blob/main/AGENTS.md) for a
 
 ```bash
 git clone https://github.com/drewsephski/squido
-cd pi-mono
+cd squido
 npm install
 npm run build
 ```
@@ -14,10 +14,10 @@ npm run build
 Run from source:
 
 ```bash
-/path/to/pi-mono/pi-test.sh
+/path/to/squido/squido-test.sh
 ```
 
-The script can be run from any directory. Pi keeps the caller's current working directory.
+The script can be run from any directory. Squido keeps the caller's current working directory.
 
 ## Forking / Rebranding
 
@@ -26,13 +26,13 @@ Configure via `package.json`:
 ```json
 {
   "piConfig": {
-    "name": "pi",
-    "configDir": ".pi"
+    "name": "squido",
+    "configDir": ".squido"
   }
 }
 ```
 
-Change `name`, `configDir`, and `bin` field for your fork. Affects CLI banner, config paths, and environment variable names.
+Change `name`, `configDir`, and `bin` field for your fork. The default config dir is `.squido` and CLI name is `squido`. Affects CLI banner, config paths, and environment variable names.
 
 ## Path Resolution
 
@@ -48,7 +48,7 @@ Never use `__dirname` directly for package assets.
 
 ## Debug Command
 
-`/debug` (hidden) writes to `~/.pi/agent/pi-debug.log`:
+`/debug` (hidden) writes to `~/.squido/agent/squido-debug.log`:
 - Rendered TUI lines with ANSI codes
 - Last messages sent to the LLM
 

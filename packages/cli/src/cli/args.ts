@@ -36,6 +36,7 @@ export interface Args {
 	noExtensions?: boolean;
 	print?: boolean;
 	export?: string;
+	demo?: boolean;
 	noSkills?: boolean;
 	skills?: string[];
 	promptTemplates?: string[];
@@ -156,6 +157,8 @@ export function parseArgs(args: string[]): Args {
 				result.messages.push(next);
 				i++;
 			}
+		} else if (arg === "--demo") {
+			result.demo = true;
 		} else if (arg === "--export" && i + 1 < args.length) {
 			result.export = args[++i];
 		} else if ((arg === "--extension" || arg === "-e") && i + 1 < args.length) {
@@ -285,6 +288,7 @@ ${chalk.bold("Options:")}
   --port <port>                  Port for web mode (default: 9876)
   --host <host>                  Host for web mode (default: localhost)
   --web-ui-dir <path>            Web UI static directory for web mode
+  --demo                         Start in demo mode (guided walkthrough, no API key required)
   --export <file>                Export session file to HTML and exit
   --list-models [search]         List available models (with optional fuzzy search)
   --verbose                      Force verbose startup (overrides quietStartup setting)

@@ -1,7 +1,7 @@
 import { ProcessTerminal, setKeybindings, TUI } from "@drewsepsi/squido-tui";
 import { existsSync } from "fs";
 import { APP_NAME, CONFIG_DIR_NAME, ENV_AGENT_DIR, getSettingsPath, PACKAGE_NAME } from "../config.ts";
-import { areExperimentalFeaturesEnabled } from "../core/experimental.ts";
+import type { AuthStorage } from "../core/auth-storage.ts";
 import { KeybindingsManager } from "../core/keybindings.ts";
 import type { SettingsManager } from "../core/settings-manager.ts";
 import { ExtensionInputComponent } from "../modes/interactive/components/extension-input.ts";
@@ -13,7 +13,7 @@ import {
 import { detectTerminalBackground, initTheme, setTheme } from "../modes/interactive/theme/theme.ts";
 
 const OFFICIAL_PACKAGE_NAME = "@drewsepsi/squido-cli";
-const OFFICIAL_APP_NAME = "pi";
+const OFFICIAL_APP_NAME = "squido";
 const OFFICIAL_CONFIG_DIR_NAME = ".squido";
 
 interface DistributionMetadata {
@@ -47,7 +47,6 @@ async function clearStartupTui(ui: TUI): Promise<void> {
 /**
  * First-time setup runs when all of these hold:
  * - this is the official Pi distribution (not a fork/rebrand)
- * - experimental features are enabled (SQUIDO_EXPERIMENTAL=1)
  * - the default agent directory is used (no custom agent dir override)
  * - setup was not completed before (settings.json does not exist)
  */
@@ -59,9 +58,6 @@ export function shouldRunFirstTimeSetup(settingsPath: string = getSettingsPath()
 			configDirName: CONFIG_DIR_NAME,
 		})
 	) {
-		return false;
-	}
-	if (!areExperimentalFeaturesEnabled()) {
 		return false;
 	}
 	if (process.env[ENV_AGENT_DIR]) {
@@ -103,7 +99,14 @@ export async function showStartupSelector<T>(
 }
 
 /** Show the first-time setup dialog and persist the result */
-export async function showFirstTimeSetup(settingsManager: SettingsManager): Promise<void> {
+export async function showFirstTimeSetup(
+	settingsManager: SettingsManager,
+	options?: {
+		hasConfiguredProviders?: boolean;
+		configuredProviders?: string[];
+		authStorage?: AuthStorage;
+	},
+): Promise<void> {
 	return new Promise((resolve) => {
 		const ui = createStartupTui(settingsManager);
 
@@ -117,6 +120,18 @@ export async function showFirstTimeSetup(settingsManager: SettingsManager): Prom
 				settingsManager.setTheme(result.theme);
 				settingsManager.setEnableAnalytics(result.shareAnalytics);
 				await settingsManager.flush();
+
+				// If user configured a provider during setup, save the API key
+				if (result.configuredProvider && options?.authStorage) {
+					try {
+						options.authStorage.set(result.configuredProvider.name, {
+							type: "api_key",
+							key: result.configuredProvider.apiKey,
+						});
+					} catch {
+						// Best-effort — auth will be checked again at runtime
+					}
+				}
 			}
 			await clearStartupTui(ui);
 			ui.stop();
@@ -125,6 +140,8 @@ export async function showFirstTimeSetup(settingsManager: SettingsManager): Prom
 
 		const component = new FirstTimeSetupComponent({
 			detectedTheme: detectTerminalBackground().theme,
+			hasConfiguredProviders: options?.hasConfiguredProviders ?? false,
+			configuredProviders: options?.configuredProviders ?? [],
 			onThemePreview: (themeName) => {
 				setTheme(themeName);
 				ui.invalidate();

@@ -14,6 +14,7 @@ import {
 	CloudLogin,
 	OAuthCallback,
 	ShareView,
+	GistSessionView,
 } from "./dashboard/index.ts";
 import { AgentPage } from "./agent/index.ts";
 import "./components/components.css";
@@ -42,8 +43,9 @@ export function App() {
 				{/* Agent chat (no auth — connects to local Squido server) */}
 				<Route path="/agent" element={<AgentPage />} />
 
-				{/* Public: shared session view (no auth) */}
+				{/* Public: shared session views (no auth) */}
 				<Route path="/share/:token" element={<ShareView />} />
+				<Route path="/session/:gistId" element={<GistSessionView />} />
 
 				{/* Dashboard: login and OAuth callback (no auth guard) */}
 				<Route path="/dashboard/login" element={<CloudLogin />} />

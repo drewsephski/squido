@@ -1,5 +1,5 @@
 {
-  "name": "pi-extension-custom-provider-anthropic",
+  "name": "squido-extension-custom-provider-anthropic",
   "private": true,
   "version": "0.79.1",
   "type": "module",

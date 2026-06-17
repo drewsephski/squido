@@ -1,10 +1,10 @@
 # Sessions
 
-Pi saves conversations as sessions so you can continue work, branch from earlier turns, and revisit previous paths.
+Squido saves conversations as sessions so you can continue work, branch from earlier turns, and revisit previous paths.
 
 ## Session Storage
 
-Sessions auto-save to `~/.pi/agent/sessions/`, organized by working directory. Each session is a JSONL file with a tree structure.
+Sessions auto-save to `~/.squido/agent/sessions/`, organized by working directory. Each session is a JSONL file with a tree structure.
 
 ```bash
 pi -c                  # Continue most recent session
@@ -47,7 +47,7 @@ In the picker you can:
 - rename with Ctrl+R
 - delete with Ctrl+D, then confirm
 
-When available, pi uses the `trash` CLI for deletion instead of permanently removing files.
+When available, squido uses the `trash` CLI for deletion instead of permanently removing files.
 
 ## Naming Sessions
 
@@ -64,7 +64,7 @@ pi --name "Refactor auth module"
 pi --name "CI audit" -p "Review this build failure"
 ```
 
-Named sessions are easier to find in `/resume` and `pi -r`.
+Named sessions are easier to find in `/resume` and `squido -r` (the CLI command is still `pi` for backward compatibility).
 
 ## Branching with `/tree`
 
@@ -128,7 +128,7 @@ Use `/tree` when you want to keep alternatives together. Use `/fork` or `/clone`
 
 ## Branch Summaries
 
-When `/tree` switches away from one branch to another, pi can summarize the abandoned branch and attach that summary at the new position. This preserves important context from the path you left without replaying the whole branch.
+When `/tree` switches away from one branch to another, squido can summarize the abandoned branch and attach that summary at the new position. This preserves important context from the path you left without replaying the whole branch.
 
 When prompted, choose one of:
 

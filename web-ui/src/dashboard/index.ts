@@ -6,4 +6,5 @@ export { SessionList } from "./SessionList.tsx";
 export { SessionDetail } from "./SessionDetail.tsx";
 export { CloudLogin } from "./CloudLogin.tsx";
 export { ShareView } from "./ShareView.tsx";
+export { GistSessionView } from "./GistSessionView.tsx";
 export { OAuthCallback } from "./OAuthCallback.tsx";

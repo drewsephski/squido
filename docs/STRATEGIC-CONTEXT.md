@@ -12,7 +12,7 @@ npm install -g @drewsepsi/squido-cli
 squido
 ```
 
-Website: https://squidagent.app  
+Website: <https://squidagent.app>  
 Config directory: `~/.squido/agent/`  
 License: MIT
 
@@ -56,6 +56,7 @@ Build order: `tui` -> `ai` -> `agent` -> `cloud` -> `cli` -> `review-agent`
 | openai-codex-responses | 4 |
 
 Provider registration works via two registries:
+
 1. **Model registry** (`models.generated.ts`) — static model definitions with cost data, context windows, API protocol mappings
 2. **API/streaming registry** (`api-registry.ts`) — runtime registry of `StreamFunction` implementations keyed by API protocol
 
@@ -75,6 +76,7 @@ Session system: tree-structured entries persisted as JSONL files. Entry types: `
 ### TUI Engine (`packages/tui`)
 
 Custom differential-rendering terminal UI library with:
+
 - Line-level dirty tracking (compares `previousLines` vs `newLines`)
 - 60fps capped render loop with throttling
 - Overlay/modal system with anchor/percentage/absolute positioning
@@ -153,6 +155,7 @@ Discovery: `~/.squido/extensions/`, `.squido/extensions/` (project-local), confi
 ## Skills System
 
 Implements the Agent Skills standard. Loads from:
+
 - `~/.squido/skills/` (global)
 - `.squido/skills/` (project-local)
 - `.agents/skills/` (walking up ancestors)
@@ -200,7 +203,8 @@ Package sources: `npm:`, `git:`, raw URLs, local paths. Installed packages bundl
 /scoped-models    Enable/disable models for Ctrl+P cycling
 /export           Export session (HTML default, or .jsonl)
 /import           Import and resume session from JSONL
-/share            Share session as secret GitHub gist
+/share            Share session as secret GitHub gist (viewable at /session/:gistId)
+/publish          Export session as redacted HTML artifact (local file)
 /copy             Copy last agent message to clipboard
 /name             Set session display name
 /session          Show session info and stats
@@ -248,12 +252,14 @@ Client package: `@drewsepsi/squido-cloud` (private, built as part of the monorep
 `web-ui/` — Vite + React 19 SPA, built separately (not part of npm workspaces).
 
 Routes:
+
 | Route | Purpose |
 |---|---|
 | `/` | Landing page (Header + Hero + Features + Install + Footer) |
 | `/docs/*` | Documentation viewer (markdown-based) |
 | `/agent` | Chat interface via WebSocket to local Squido server |
-| `/share/:token` | Public shared session view |
+| `/share/:token` | Public shared session view (cloud API, D1-backed) |
+| `/session/:gistId` | Public session viewer (GitHub gist, created by CLI `/share` command) |
 | `/dashboard/*` | Cloud dashboard (auth required) |
 
 ---
@@ -261,15 +267,19 @@ Routes:
 ## Current Positions
 
 ### Original
+
 Provider-agnostic coding agent.
 
 ### Better
+
 Use any model.
 
 ### Better still
+
 Keep your workflow when models change.
 
 ### Current
+
 **Own your AI workflow.**
 
 ---
@@ -285,9 +295,11 @@ Instead: Squido is the place where developers own, preserve, package, and share 
 ## Current Product Diagnosis
 
 ### Activation gap
+
 Install -> Open -> See no-model -> Try prompt -> Error -> Leave. Users cannot experience the differentiator without first authenticating with a provider.
 
 ### Hidden differentiator
+
 Model switching mid-conversation (`/model`, Ctrl+L, Ctrl+P cycle) currently exists but is buried — users must already be authenticated and in a session to discover it.
 
 ---
@@ -307,6 +319,7 @@ Layer 3 is the most promising direction and currently the least validated.
 ## Existing Foundations
 
 **Fully implemented:**
+
 - Package manager (`squido install/remove/update/list`)
 - Extension lifecycle (events, tools, commands, providers, flags, shortcuts, renderers)
 - Skills loader (Agent Skills standard)
@@ -320,6 +333,7 @@ Layer 3 is the most promising direction and currently the least validated.
 - WebSocket mode for browser UIs
 
 **Missing / incomplete:**
+
 - Workflow export/import (no standardized format for packaging a full workflow)
 - Registry/marketplace for published packages
 - Analytics (install, activation, retention, model switches)

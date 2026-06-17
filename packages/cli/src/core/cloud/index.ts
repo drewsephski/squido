@@ -6,6 +6,9 @@
  * - Adapts SessionManager -> SessionEntryReader
  * - Creates and manages SquidoCloudClient, CloudAuth, SessionSync
  * - Provides slash command handlers for /cloud
+ *
+ * The @drewsepsi/squido-cloud package is an optional dependency.
+ * All integration code is guarded so the CLI works without it.
  */
 
 import type {
@@ -15,10 +18,33 @@ import type {
 	SyncState,
 	SyncStateStore,
 } from "@drewsepsi/squido-cloud";
-import { CloudAuth, SessionSync, SquidoCloudClient } from "@drewsepsi/squido-cloud";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import type { ReadonlySessionManager } from "../session-manager.ts";
+
+// Lazy-loaded cloud package — returns null if @drewsepsi/squido-cloud is not installed.
+let cloudPkg: {
+	CloudAuth: typeof import("@drewsepsi/squido-cloud").CloudAuth;
+	SessionSync: typeof import("@drewsepsi/squido-cloud").SessionSync;
+	SquidoCloudClient: typeof import("@drewsepsi/squido-cloud").SquidoCloudClient;
+} | null = null;
+let cloudLoadAttempted = false;
+
+async function getCloudPackage(): Promise<typeof cloudPkg> {
+	if (cloudLoadAttempted) return cloudPkg;
+	cloudLoadAttempted = true;
+	try {
+		const mod = await import("@drewsepsi/squido-cloud");
+		cloudPkg = {
+			CloudAuth: mod.CloudAuth,
+			SessionSync: mod.SessionSync,
+			SquidoCloudClient: mod.SquidoCloudClient,
+		};
+	} catch {
+		// Package not installed — cloud features unavailable
+	}
+	return cloudPkg;
+}
 
 // ── AuthStorage-like interface (duck-typed for dependency inversion) ─
 
@@ -153,32 +179,50 @@ export interface CloudIntegrationOptions {
 }
 
 export class CloudIntegration {
-	client: SquidoCloudClient;
-	auth: CloudAuth;
-	sync: SessionSync;
+	client!: import("@drewsepsi/squido-cloud").SquidoCloudClient;
+	auth!: import("@drewsepsi/squido-cloud").CloudAuth;
+	sync!: import("@drewsepsi/squido-cloud").SessionSync;
 	store: AuthStorageCredentialStore;
 	entryReader: SessionManagerEntryReader;
 	stateStore: FileSyncStateStore;
 	isCloudEnabled: () => boolean;
+	private initPromise: Promise<void>;
 
 	constructor(options: CloudIntegrationOptions) {
 		this.store = new AuthStorageCredentialStore(options.authStorage);
 		this.entryReader = new SessionManagerEntryReader(options.sessionManager);
 		this.stateStore = new FileSyncStateStore(options.syncStateDir);
 		this.isCloudEnabled = options.isCloudEnabled;
+		this.client = null as never;
+		this.auth = null as never;
+		this.sync = null as never;
 
-		this.client = new SquidoCloudClient({
+		this.initPromise = this.init(options);
+	}
+
+	private async init(options: CloudIntegrationOptions): Promise<void> {
+		const pkg = await getCloudPackage();
+		if (!pkg) {
+			throw new Error("@drewsepsi/squido-cloud is not installed. Cloud features are unavailable.");
+		}
+
+		this.client = new pkg.SquidoCloudClient({
 			baseUrl: options.baseUrl,
 			fetch: options.fetchFn,
 			getToken: () => this.auth?.getAccessToken() ?? null,
 		});
 
-		this.auth = new CloudAuth(this.client, this.store);
-		this.sync = new SessionSync({
+		this.auth = new pkg.CloudAuth(this.client, this.store);
+		this.sync = new pkg.SessionSync({
 			client: this.client,
 			entryReader: this.entryReader,
 			stateStore: this.stateStore,
 		});
+	}
+
+	/** Wait for async initialization to complete. */
+	async ready(): Promise<void> {
+		await this.initPromise;
 	}
 
 	/** Returns true if cloud sync is both enabled and authenticated. */
