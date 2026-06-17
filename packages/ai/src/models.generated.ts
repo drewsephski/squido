@@ -9540,13 +9540,13 @@ export const MODELS = {
 			thinkingLevelMap: {"minimal":null,"low":null,"medium":null,"high":"high","xhigh":"xhigh"},
 			input: ["text"],
 			cost: {
-				input: 0.098,
-				output: 0.196,
+				input: 0.09,
+				output: 0.18,
 				cacheRead: 0.02,
 				cacheWrite: 0,
 			},
 			contextWindow: 1048576,
-			maxTokens: 4096,
+			maxTokens: 65536,
 		} satisfies Model<"openai-completions">,
 		"deepseek/deepseek-v4-pro": {
 			id: "deepseek/deepseek-v4-pro",
@@ -10718,8 +10718,8 @@ export const MODELS = {
 			input: ["text"],
 			cost: {
 				input: 0.5,
-				output: 2.5,
-				cacheRead: 0.15,
+				output: 2.2,
+				cacheRead: 0.09999999999999999,
 				cacheWrite: 0,
 			},
 			contextWindow: 1000000,
@@ -13030,7 +13030,7 @@ export const MODELS = {
 				cacheWrite: 0,
 			},
 			contextWindow: 1048576,
-			maxTokens: 131072,
+			maxTokens: 262144,
 		} satisfies Model<"openai-completions">,
 		"~anthropic/claude-fable-latest": {
 			id: "~anthropic/claude-fable-latest",
@@ -15148,7 +15148,7 @@ export const MODELS = {
 				cacheWrite: 0,
 			},
 			contextWindow: 262144,
-			maxTokens: 4096,
+			maxTokens: 262144,
 		} satisfies Model<"anthropic-messages">,
 		"nvidia/nemotron-3-super-120b-a12b": {
 			id: "nvidia/nemotron-3-super-120b-a12b",

@@ -5581,10 +5581,10 @@ export class InteractiveMode {
 					const formattedMessage = [
 						"",
 						"  Squido Cloud Login",
-						"  " + "=".repeat(40),
+						`  ${"=".repeat(40)}`,
 						`  Code: ${code}`,
 						`  URL:  ${uri}`,
-						"  " + "=".repeat(40),
+						`  ${"=".repeat(40)}`,
 						"",
 						"  Opening browser...",
 					].join("\n");

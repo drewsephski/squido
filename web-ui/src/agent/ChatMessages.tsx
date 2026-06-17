@@ -20,9 +20,17 @@ export interface DisplayMessage {
 
 interface ChatMessagesProps {
 	messages: DisplayMessage[];
+	onPrompt?: (text: string) => void;
 }
 
-export function ChatMessages({ messages }: ChatMessagesProps) {
+const EXAMPLE_PROMPTS = [
+	"Explore the project structure and understand how it's organized",
+	"Find how authentication is implemented across the codebase",
+	"Run the project checks and fix any issues",
+	"Create a new utility module for common helper functions",
+];
+
+export function ChatMessages({ messages, onPrompt }: ChatMessagesProps) {
 	const bottomRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
@@ -33,7 +41,18 @@ export function ChatMessages({ messages }: ChatMessagesProps) {
 		return (
 			<div style={emptyStyle}>
 				<div style={emptyTitleStyle}>Squido</div>
-				<div style={emptySubStyle}>Connect to the agent server, then send a message to start interacting.</div>
+				<div style={emptySubStyle}>Connect to an agent and try one of these:</div>
+				<div style={promptListStyle}>
+					{EXAMPLE_PROMPTS.map((p) => (
+						<button
+							key={p}
+							onClick={() => onPrompt?.(p)}
+							style={promptChipStyle}
+						>
+							{p}
+						</button>
+					))}
+				</div>
 			</div>
 		);
 	}
@@ -81,4 +100,28 @@ const emptyTitleStyle: React.CSSProperties = {
 const emptySubStyle: React.CSSProperties = {
 	fontSize: "0.875rem",
 	color: "var(--ink-dim)",
+};
+
+const promptListStyle: React.CSSProperties = {
+	display: "flex",
+	flexDirection: "column",
+	gap: "0.375rem",
+	marginTop: "0.75rem",
+	width: "100%",
+	maxWidth: 320,
+};
+
+const promptChipStyle: React.CSSProperties = {
+	display: "block",
+	width: "100%",
+	padding: "0.5rem 0.75rem",
+	fontFamily: "var(--font-mono)",
+	fontSize: "0.75rem",
+	color: "var(--ink-muted)",
+	background: "var(--surface)",
+	border: "1px solid var(--border)",
+	borderRadius: "var(--radius-md)",
+	cursor: "pointer",
+	textAlign: "left",
+	transition: "border-color 0.15s, color 0.15s",
 };

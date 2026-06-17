@@ -8,7 +8,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { extname, join, normalize } from "node:path";
-import { type WebSocket, WebSocketServer } from "ws";
+import { WebSocketServer } from "ws";
 import type { WebServerOptions } from "./web-types.ts";
 
 const MIME_TYPES: Record<string, string> = {

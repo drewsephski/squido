@@ -117,8 +117,8 @@ export function MessageBubble({ role, content, thinking, toolCalls, streaming, m
 					{content && (
 						<div style={{
 							...bubbleStyle,
-							background: isUser ? "var(--surface-hover)" : "var(--surface)",
-							border: "1px solid var(--border)",
+							background: isUser ? "rgba(242, 154, 58, 0.08)" : "var(--surface-raised)",
+							border: `1px solid ${isUser ? "rgba(242, 154, 58, 0.2)" : "var(--border)"}`,
 							padding: "0.75rem 1rem",
 						}}>
 							{isUser ? (

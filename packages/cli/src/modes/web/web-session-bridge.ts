@@ -5,7 +5,6 @@
  * AgentSession. Subscribes to agent events and streams them to the client.
  */
 
-import type { Model } from "@drewsepsi/squido-ai";
 import type { WebSocket } from "ws";
 import type { AgentSession } from "../../core/agent-session.ts";
 import type { WebClientMessage, WebServerMessage, WebSessionState } from "./web-types.ts";

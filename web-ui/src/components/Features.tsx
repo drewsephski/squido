@@ -11,22 +11,22 @@ const tools: Tool[] = [
 	{
 		name: "read",
 		description: "Inspect files and search code before you change anything.",
-		detail: "read path/to/file.ts",
+		detail: "read src/app.ts",
 	},
 	{
 		name: "bash",
 		description: "Run builds, tests, and scripts without leaving the session.",
-		detail: "bash npm run build",
+		detail: "bash npm run check",
 	},
 	{
 		name: "edit",
 		description: "Make targeted edits with diff preview and rollback.",
-		detail: 'edit --old "foo" --new "bar"',
+		detail: "edit src/auth.ts --add-auth",
 	},
 	{
 		name: "write",
 		description: "Create new files — code, docs, configs, any text format.",
-		detail: "write src/app.tsx",
+		detail: "write src/utils.ts",
 	},
 	{
 		name: "session",

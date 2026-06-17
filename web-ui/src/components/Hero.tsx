@@ -3,12 +3,14 @@ import { useTypewriter } from "../hooks/useTypewriter.ts";
 
 const TERMINAL_LINES = [
 	"$ squido",
-	"> read src/auth.ts",
-	"  87 lines · typescript",
-	"> edit src/auth.ts",
+	"> read src/app.ts",
+	"  120 lines · typescript",
+	"> edit src/auth.ts --add-auth",
 	"  Applied 1 change",
 	"> bash npm run check",
 	"  All checks passed",
+	"> write src/utils.ts",
+	"  Created new file",
 ] as const;
 
 function TerminalDemo() {

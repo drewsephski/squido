@@ -3,6 +3,7 @@ import { useAgentWebSocket, type AgentSessionEvent } from "./useAgentWebSocket.t
 import { ChatMessages, type DisplayMessage } from "./ChatMessages.tsx";
 import { ChatInput } from "./ChatInput.tsx";
 import { StatusBar } from "./StatusBar.tsx";
+import { ContextPanel } from "./ContextPanel.tsx";
 
 const WS_URL = `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/ws`;
 
@@ -63,13 +64,18 @@ export function AgentPage() {
 	const [messages, setMessages] = useState<DisplayMessage[]>([]);
 	const [isStreaming, setIsStreaming] = useState(false);
 	const [sidebarOpen, setSidebarOpen] = useState(true);
+	const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
 	const [modelPickerOpen, setModelPickerOpen] = useState(false);
 	const [modelSearch, setModelSearch] = useState("");
 	const [availableModels, setAvailableModels] = useState<ApiModel[]>([]);
 	const [modelsLoading, setModelsLoading] = useState(false);
+	const [modelsError, setModelsError] = useState<string | null>(null);
+	const [optimisticModel, setOptimisticModel] = useState<{ provider: string; id: string } | null>(null);
 	const pickerRef = useRef<HTMLDivElement>(null);
 	const searchRef = useRef<HTMLInputElement>(null);
+	const modelsFetchCount = useRef(0);
 	const streamingMsgId = useRef<string | null>(null);
+	const promptQueueRef = useRef<string[]>([]);
 	const toolCalls = useRef<Map<string, {
 		toolCallId: string;
 		toolName: string;
@@ -79,24 +85,6 @@ export function AgentPage() {
 		isError: boolean;
 	}>>(new Map());
 
-	// Fetch available models from REST API
-	useEffect(() => {
-		setModelsLoading(true);
-		fetch("/api/models")
-			.then((r) => {
-				if (!r.ok) throw new Error(`HTTP ${r.status}`);
-				return r.json() as Promise<{ models: ApiModel[] }>;
-			})
-			.then((data) => {
-				setAvailableModels(data.models);
-			})
-			.catch(() => {
-				// Web server not running or old code — no models to show
-				setAvailableModels([]);
-			})
-			.finally(() => setModelsLoading(false));
-	}, []);
-
 	// Focus search when picker opens
 	useEffect(() => {
 		if (modelPickerOpen && searchRef.current) {
@@ -104,17 +92,33 @@ export function AgentPage() {
 		}
 	}, [modelPickerOpen]);
 
-	// Close picker on click outside
+	// Close picker on click outside / Escape key
 	useEffect(() => {
 		if (!modelPickerOpen) return;
-		const handler = (e: MouseEvent) => {
+		const close = () => {
+			setModelPickerOpen(false);
+			setModelSearch("");
+		};
+		const clickHandler = (e: MouseEvent) => {
 			if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
-				setModelPickerOpen(false);
-				setModelSearch("");
+				close();
 			}
 		};
-		document.addEventListener("mousedown", handler);
-		return () => document.removeEventListener("mousedown", handler);
+		const keyHandler = (e: KeyboardEvent) => {
+			if (e.key === "Escape") {
+				close();
+			}
+		};
+		// Small delay so the click that opened the picker doesn't close it
+		const raf = requestAnimationFrame(() => {
+			document.addEventListener("mousedown", clickHandler);
+			document.addEventListener("keydown", keyHandler);
+		});
+		return () => {
+			cancelAnimationFrame(raf);
+			document.removeEventListener("mousedown", clickHandler);
+			document.removeEventListener("keydown", keyHandler);
+		};
 	}, [modelPickerOpen]);
 
 	const handleEvent = useCallback((event: AgentSessionEvent) => {
@@ -303,6 +307,58 @@ export function AgentPage() {
 		onError: handleError,
 	});
 
+	// Fetch available models from REST API (with retry)
+	const fetchModels = useCallback(() => {
+		const attempt = ++modelsFetchCount.current;
+		setModelsLoading(true);
+		setModelsError(null);
+		fetch("/api/models")
+			.then((r) => {
+				if (!r.ok) throw new Error(`HTTP ${r.status}`);
+				return r.json() as Promise<{ models: ApiModel[] }>;
+			})
+			.then((data) => {
+				if (attempt === modelsFetchCount.current) {
+					setAvailableModels(data.models);
+					setModelsError(null);
+				}
+			})
+			.catch((err) => {
+				if (attempt === modelsFetchCount.current) {
+					setAvailableModels([]);
+					setModelsError(err.message);
+					if (modelsFetchCount.current < 3) {
+						setTimeout(fetchModels, 2000);
+					}
+				}
+			})
+			.finally(() => {
+				if (attempt === modelsFetchCount.current) {
+					setModelsLoading(false);
+				}
+			});
+	}, []);
+
+	useEffect(() => {
+		fetchModels();
+	}, [fetchModels]);
+
+	// Re-fetch models on reconnect
+	const prevStatusRef = useRef(status);
+	useEffect(() => {
+		if (prevStatusRef.current !== "connected" && status === "connected") {
+			fetchModels();
+		}
+		prevStatusRef.current = status;
+	}, [status, fetchModels]);
+
+	// Clear optimistic model when server state catches up
+	useEffect(() => {
+		if (optimisticModel && state?.model && state.model.provider === optimisticModel.provider && state.model.id === optimisticModel.id) {
+			setOptimisticModel(null);
+		}
+	}, [state, optimisticModel]);
+
 	const handleSend = useCallback((text: string) => {
 		// Intercept slash commands for local handling
 		const cmd = text.split(" ")[0].toLowerCase();
@@ -401,29 +457,58 @@ export function AgentPage() {
 		send({ type: "prompt", text });
 	}, [send, state]);
 
+	// Handle clicking an example prompt: auto-connect if needed, queue message
+	const handlePromptClick = useCallback((text: string) => {
+		const userMsg: DisplayMessage = {
+			id: uid(),
+			role: "user",
+			content: text,
+		};
+		setMessages((prev) => [...prev, userMsg]);
+
+		if (status === "connected") {
+			send({ type: "prompt", text });
+		} else {
+			connect();
+			promptQueueRef.current.push(text);
+		}
+	}, [send, connect, status]);
+
+	// Flush queued prompts once connected
+	useEffect(() => {
+		if (status === "connected" && promptQueueRef.current.length > 0) {
+			for (const p of promptQueueRef.current) {
+				send({ type: "prompt", text: p });
+			}
+			promptQueueRef.current = [];
+		}
+	}, [status, send]);
+
 	const handleSetThinking = useCallback((level: string) => {
 		send({ type: "set_thinking", level });
 	}, [send]);
 
 	const handleSetModel = useCallback((provider: string, modelId: string) => {
 		send({ type: "set_model", provider, modelId });
+		setOptimisticModel({ provider, id: modelId });
 		setModelPickerOpen(false);
 		setModelSearch("");
 	}, [send]);
 
 	const isConnected = status === "connected";
-	const currentModelKey = state?.model
-		? `${state.model.provider}/${state.model.id}`
+	const effectiveModel = optimisticModel ?? state?.model ?? null;
+	const currentModelKey = effectiveModel
+		? `${effectiveModel.provider}/${effectiveModel.id}`
 		: null;
 
 	// Merge API models with current model from state (ensures current model always appears)
 	const allModels = (() => {
 		const seen = new Set(availableModels.map((m) => `${m.provider}/${m.id}`));
 		const merged = [...availableModels];
-		if (state?.model && !seen.has(currentModelKey!)) {
+		if (effectiveModel && !seen.has(currentModelKey!)) {
 			merged.push({
-				provider: state.model.provider,
-				id: state.model.id,
+				provider: effectiveModel.provider,
+				id: effectiveModel.id,
 			});
 		}
 		return merged;
@@ -466,11 +551,11 @@ export function AgentPage() {
 					<span style={brandBadgeStyle}>IDE</span>
 				</div>
 				<div style={topBarRightStyle}>
-					{status === "connected" && state?.model && (
+					{status === "connected" && effectiveModel && (
 						<>
 							<span style={modelBadgeStyle}>
 								<span style={modelBadgeDotStyle} />
-								{state.model.id}
+								{effectiveModel.id}
 							</span>
 							{state?.thinkingLevel && state.thinkingLevel !== "off" && (
 								<span style={thinkBadgeStyle}>{state.thinkingLevel}</span>
@@ -525,11 +610,11 @@ export function AgentPage() {
 						<div style={cardStyle}>
 							<div style={cardTitleStyle}>Model</div>
 							<div style={cardBodyStyle}>
-								{isConnected && state?.model ? (
+								{isConnected && effectiveModel ? (
 									<>
 										<div style={modelCurrentBoxStyle}>
-											<span style={modelProviderStyle}>{state.model.provider}</span>
-											<span style={modelNameStyle}>{state.model.id}</span>
+											<span style={modelProviderStyle}>{effectiveModel.provider}</span>
+											<span style={modelNameStyle}>{effectiveModel.id}</span>
 										</div>
 
 										{/* Model picker trigger */}
@@ -546,7 +631,9 @@ export function AgentPage() {
 
 											{/* Model picker dropdown */}
 											{modelPickerOpen && (
-												<div ref={pickerRef} style={pickerOverlayStyle}>
+												<>
+													<div style={pickerBackdropStyle} />
+													<div ref={pickerRef} style={pickerOverlayStyle}>
 													<div style={pickerHeaderStyle}>
 														<input
 															ref={searchRef}
@@ -560,14 +647,16 @@ export function AgentPage() {
 															{allModels.length} available
 														</span>
 													</div>
-													<div style={pickerListStyle}>
+													<div style={pickerListStyle} className="model-picker-list">
 														{modelsLoading ? (
 															<div style={pickerLoadingStyle}>Loading models...</div>
 														) : allModels.length === 0 && !modelSearch ? (
 															<div style={pickerEmptyStyle}>
 																<div style={pickerEmptyTitleStyle}>No models available</div>
 																<div style={pickerEmptySubStyle}>
-																	Connect to a session first, then open the model picker.
+																	{modelsError
+																		? `Failed to load models: ${modelsError}`
+																		: "No models found. Configure providers in settings."}
 																</div>
 															</div>
 														) : Object.keys(modelsByProvider).length === 0 ? (
@@ -594,7 +683,9 @@ export function AgentPage() {
 																				}}
 																			>
 																				<div style={modelItemMainStyle}>
-																					<span style={modelItemIdStyle}>{m.id}</span>
+																					<span style={modelItemIdStyle}>
+																						{m.name && m.name !== m.id ? m.name : m.id}
+																					</span>
 																					{m.reasoning && (
 																						<span style={modelItemTagStyle}>think</span>
 																					)}
@@ -614,7 +705,8 @@ export function AgentPage() {
 															))
 														)}
 													</div>
-												</div>
+													</div>
+												</>
 											)}
 										</div>
 
@@ -628,9 +720,9 @@ export function AgentPage() {
 														onClick={() => handleSetThinking(level)}
 														style={{
 															...thinkingButtonStyle,
-															...(state.thinkingLevel === level
-																? thinkingButtonActiveStyle
-																: {}),
+													...(state?.thinkingLevel === level
+														? thinkingButtonActiveStyle
+														: {}),
 														}}
 													>
 														{level}
@@ -678,7 +770,7 @@ export function AgentPage() {
 						onConnect={connect}
 						onDisconnect={disconnect}
 					/>
-					<ChatMessages messages={messages} />
+					<ChatMessages messages={messages} onPrompt={handlePromptClick} />
 					<ChatInput
 						onSend={handleSend}
 						disabled={status !== "connected" || isStreaming}
@@ -919,6 +1011,13 @@ const changeModelButtonStyle: React.CSSProperties = {
 };
 
 // Model picker dropdown
+const pickerBackdropStyle: React.CSSProperties = {
+	position: "fixed",
+	inset: 0,
+	background: "rgba(0,0,0,0.4)",
+	zIndex: 999,
+};
+
 const pickerOverlayStyle: React.CSSProperties = {
 	position: "fixed",
 	top: "50%",
@@ -1169,4 +1268,5 @@ const chatAreaStyle: React.CSSProperties = {
 	display: "flex",
 	flexDirection: "column",
 	minWidth: 0,
+	background: "var(--surface)",
 };

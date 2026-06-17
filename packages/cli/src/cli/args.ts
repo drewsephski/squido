@@ -85,7 +85,7 @@ export function parseArgs(args: string[]): Args {
 			}
 		} else if (arg === "--port" && i + 1 < args.length) {
 			const port = parseInt(args[++i], 10);
-			if (!isNaN(port) && port > 0 && port < 65536) {
+			if (!Number.isNaN(port) && port > 0 && port < 65536) {
 				result.port = port;
 			} else {
 				result.diagnostics.push({ type: "warning", message: `Invalid port "${args[i]}". Using default.` });

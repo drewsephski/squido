@@ -62,9 +62,11 @@ export async function runWebMode(runtime: AgentSessionRuntime, options: WebModeO
 	// Start listening
 	httpServer.listen(port, host, () => {
 		const addr = httpServer.address() as AddressInfo;
-		const url = `http://${addr.address === "::" ? "localhost" : addr.address}:${addr.port}`;
+		const url = `http://127.0.0.1:${addr.port}/agent`;
 
-		console.error(`Squido web interface: ${url}`);
+		// OSC 8 hyperlink: clickable in modern terminals (Windows Terminal, iTerm2, kitty, etc.)
+		// Falls back to plain text in older terminals — URL displayed for copy-paste either way.
+		console.error(`Squido web interface: \x1b]8;;${url}\x1b\\Click here\x1b]8;;\x1b\\ to access the web UI (${url})`);
 
 		if (shouldOpenBrowser && staticDir) {
 			openBrowser(url);

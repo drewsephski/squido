@@ -115,14 +115,6 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message..." 
 		commandTriggered.current = false;
 	}
 
-	function adjustHeight() {
-		const el = textareaRef.current;
-		if (el) {
-			el.style.height = "auto";
-			el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
-		}
-	}
-
 	return (
 		<div style={containerStyle}>
 			<div style={inputWrapperStyle}>
@@ -155,14 +147,12 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message..." 
 				<textarea
 					ref={textareaRef}
 					value={value}
-					onChange={(e) => {
-						setValue(e.target.value);
-						adjustHeight();
-					}}
+					onChange={(e) => setValue(e.target.value)}
 					onKeyDown={handleKeyDown}
 					placeholder={placeholder}
 					disabled={disabled}
 					rows={1}
+					className="agent-chat-input"
 					style={textareaStyle}
 					aria-label="Chat input"
 				/>
@@ -170,6 +160,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message..." 
 			<button
 				onClick={submit}
 				disabled={disabled || !value.trim()}
+				className="agent-send-btn"
 				style={sendButtonStyle}
 				aria-label="Send message"
 			>
@@ -204,12 +195,12 @@ const textareaStyle: React.CSSProperties = {
 	fontSize: "0.875rem",
 	lineHeight: 1.5,
 	color: "var(--ink)",
-	background: "var(--bg)",
+	background: "var(--surface)",
 	border: "1px solid var(--border)",
 	borderRadius: "var(--radius-md)",
 	outline: "none",
-	minHeight: 40,
-	maxHeight: 200,
+	height: 44,
+	overflow: "hidden",
 };
 
 const sendButtonStyle: React.CSSProperties = {
@@ -224,7 +215,6 @@ const sendButtonStyle: React.CSSProperties = {
 	color: "var(--bg)",
 	cursor: "pointer",
 	flexShrink: 0,
-	transition: "opacity var(--duration-fast) var(--ease-out)",
 };
 
 // Dropdown

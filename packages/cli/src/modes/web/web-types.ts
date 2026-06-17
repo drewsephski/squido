@@ -57,5 +57,12 @@ export interface WebServerOptions {
 	port: number;
 	staticDir: string;
 	openBrowser: boolean;
-	getModels?: () => Array<{ provider: string; id: string; name?: string; contextWindow?: number; reasoning?: boolean; input?: string[] }>;
+	getModels?: () => Array<{
+		provider: string;
+		id: string;
+		name?: string;
+		contextWindow?: number;
+		reasoning?: boolean;
+		input?: string[];
+	}>;
 }
