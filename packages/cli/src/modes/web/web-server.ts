@@ -97,10 +97,18 @@ export function createWebServer(options: WebServerOptions): {
 function serveStatic(req: IncomingMessage, res: ServerResponse, staticDir: string): void {
 	// Strip query string
 	const rawPath = req.url?.split("?")[0] ?? "/";
-	const filePath = join(staticDir, normalize(rawPath));
+
+	// If staticDir is empty or doesn't exist, show a helpful message instead of
+	// a misleading error — the security check below would reject every request
+	// since normalize("") === "." and no path starts with ".".
+	if (!staticDir || !existsSync(staticDir)) {
+		serveFallbackPage(res);
+		return;
+	}
+
+	const resolved = normalize(join(staticDir, normalize(rawPath)));
 
 	// Security: prevent directory traversal
-	const resolved = normalize(filePath);
 	if (!resolved.startsWith(normalize(staticDir))) {
 		res.writeHead(403);
 		res.end("Forbidden");
@@ -109,8 +117,8 @@ function serveStatic(req: IncomingMessage, res: ServerResponse, staticDir: strin
 
 	// Try exact file, then index.html fallback
 	try {
-		if (existsSync(filePath) && statSync(filePath).isFile()) {
-			serveFile(res, filePath);
+		if (existsSync(resolved) && statSync(resolved).isFile()) {
+			serveFile(res, resolved);
 			return;
 		}
 	} catch {
@@ -127,6 +135,38 @@ function serveStatic(req: IncomingMessage, res: ServerResponse, staticDir: strin
 
 	// SPA fallback: serve index.html
 	serveFile(res, join(staticDir, "index.html"));
+}
+
+/**
+ * Serve a fallback page when the web UI directory hasn't been built.
+ * Returns a self-contained HTML page explaining what's wrong.
+ */
+function serveFallbackPage(res: ServerResponse): void {
+	const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Squido Web UI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 600px; margin: 80px auto; padding: 0 24px; line-height: 1.6; color: #333; }
+  h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+  pre { background: #f5f5f5; padding: 12px 16px; border-radius: 6px; overflow-x: auto; }
+  code { font-size: 0.9em; }
+  p { margin: 1em 0; }
+</style>
+</head>
+<body>
+<h1>Squido Web UI</h1>
+<p>The web UI static files haven't been built yet. To build them, run:</p>
+<pre><code>npm run build --workspace=squido-web-ui</code></pre>
+<p>If you're using Squido from source, build from the repo root:</p>
+<pre><code>npm run build</code></pre>
+<p>Then restart Squido in web mode.</p>
+</body>
+</html>`;
+	res.writeHead(200, { "Content-Type": "text/html" });
+	res.end(html);
 }
 
 function serveFile(res: ServerResponse, filePath: string): void {
