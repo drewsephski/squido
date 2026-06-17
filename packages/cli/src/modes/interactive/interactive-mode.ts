@@ -4399,34 +4399,37 @@ export class InteractiveMode {
 	}
 
 	private showModelSelector(initialSearchInput?: string): void {
-		this.showSelector((done) => {
-			const selector = new ModelSelectorComponent(
-				this.ui,
-				this.session.model,
-				this.settingsManager,
-				this.session.modelRegistry,
-				this.session.scopedModels,
-				async (model) => {
-					try {
-						await this.session.setModel(model);
-						this.footer.invalidate();
-						this.updateEditorBorderColor();
-						done();
-						this.showStatus(`Model: ${model.id}`);
-						void this.maybeWarnAboutAnthropicSubscriptionAuth(model);
-						this.checkDaxnutsEasterEgg(model);
-					} catch (error) {
-						done();
-						this.showError(error instanceof Error ? error.message : String(error));
-					}
-				},
-				() => {
-					done();
-					this.ui.requestRender();
-				},
-				initialSearchInput,
-			);
-			return { component: selector, focus: selector };
+		let overlayHandle: OverlayHandle | undefined;
+		const selector = new ModelSelectorComponent(
+			this.ui,
+			this.session.model,
+			this.settingsManager,
+			this.session.modelRegistry,
+			this.session.scopedModels,
+			async (model) => {
+				try {
+					await this.session.setModel(model);
+					this.footer.invalidate();
+					this.updateEditorBorderColor();
+					overlayHandle?.hide();
+					this.showStatus(`Model: ${model.id}`);
+					void this.maybeWarnAboutAnthropicSubscriptionAuth(model);
+					this.checkDaxnutsEasterEgg(model);
+				} catch (error) {
+					overlayHandle?.hide();
+					this.showError(error instanceof Error ? error.message : String(error));
+				}
+			},
+			() => {
+				overlayHandle?.hide();
+				this.ui.requestRender();
+			},
+			initialSearchInput,
+		);
+		overlayHandle = this.ui.showOverlay(selector, {
+			width: "60%",
+			maxHeight: "50%",
+			anchor: "center",
 		});
 	}
 

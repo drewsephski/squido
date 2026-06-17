@@ -568,7 +568,13 @@ export class Editor implements Component, Focusable {
 			const remaining = width - visibleWidth(indicator);
 			result.push(this.borderColor(indicator + "─".repeat(Math.max(0, remaining))));
 		} else {
-			result.push(horizontal.repeat(width));
+			// Show send action hint at right side of bottom border
+			const submitKeys = getKeybindings().getKeys("tui.input.submit");
+			const keyName = submitKeys.length > 0 ? submitKeys[0] : "enter";
+			const sendLabel = ` ${keyName} send `;
+			const sendWidth = visibleWidth(sendLabel);
+			const borderLen = Math.max(3, width - sendWidth);
+			result.push(this.borderColor("─".repeat(borderLen)) + this.borderColor(sendLabel));
 		}
 
 		// Add autocomplete list if active
