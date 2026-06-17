@@ -116,27 +116,24 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message..." 
 	}
 
 	return (
-		<div style={containerStyle}>
-			<div style={inputWrapperStyle}>
+		<div className="agent-chat-input-wrap">
+			<div className="agent-chat-input-area">
 				{/* Slash commands dropdown */}
 				{showCommands && filteredCommands.length > 0 && (
-					<div ref={dropdownRef} style={dropdownStyle}>
+					<div ref={dropdownRef} className="agent-slash-dropdown">
 						{filteredCommands.map(({ cmd, desc }, i) => (
 							<button
 								key={cmd}
 								onClick={() => selectCommand(cmd)}
 								onMouseEnter={() => setSelectedIndex(i)}
-								style={{
-									...commandItemStyle,
-									...(i === selectedIndex ? commandItemActiveStyle : {}),
-								}}
+								className={`agent-slash-item${i === selectedIndex ? " active" : ""}`}
 							>
-								<div style={commandItemMainStyle}>
-									<span style={commandItemKeyStyle}>{cmd}</span>
-									<span style={commandItemDescStyle}>{desc}</span>
+								<div className="agent-slash-main">
+									<span className="agent-slash-key">{cmd}</span>
+									<span className="agent-slash-desc">{desc}</span>
 								</div>
 								{i === selectedIndex && (
-									<span style={commandItemEnterStyle}>⏎</span>
+									<span className="agent-slash-enter">Enter</span>
 								)}
 							</button>
 						))}
@@ -153,127 +150,21 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message..." 
 					disabled={disabled}
 					rows={1}
 					className="agent-chat-input"
-					style={textareaStyle}
 					aria-label="Chat input"
 				/>
+				{/* Send button — sits inside the textarea visual boundary */}
+				<button
+					onClick={submit}
+					disabled={disabled || !value.trim()}
+					className="agent-send-btn"
+					aria-label="Send message"
+				>
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+						<line x1="22" y1="2" x2="11" y2="13" />
+						<polygon points="22 2 15 22 11 13 2 9 22 2" />
+					</svg>
+				</button>
 			</div>
-			<button
-				onClick={submit}
-				disabled={disabled || !value.trim()}
-				className="agent-send-btn"
-				style={sendButtonStyle}
-				aria-label="Send message"
-			>
-				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-					<line x1="22" y1="2" x2="11" y2="13" />
-					<polygon points="22 2 15 22 11 13 2 9 22 2" />
-				</svg>
-			</button>
 		</div>
 	);
 }
-
-const containerStyle: React.CSSProperties = {
-	display: "flex",
-	gap: "0.5rem",
-	padding: "0.75rem 1rem",
-	background: "var(--surface)",
-	borderTop: "1px solid var(--border)",
-	alignItems: "center",
-};
-
-const inputWrapperStyle: React.CSSProperties = {
-	flex: 1,
-	position: "relative",
-};
-
-const textareaStyle: React.CSSProperties = {
-	width: "100%",
-	resize: "none",
-	padding: "0.625rem 0.875rem",
-	fontFamily: "var(--font-body)",
-	fontSize: "0.875rem",
-	lineHeight: 1.5,
-	color: "var(--ink)",
-	background: "var(--surface)",
-	border: "1px solid var(--border)",
-	borderRadius: "var(--radius-md)",
-	outline: "none",
-	height: 44,
-	overflow: "hidden",
-};
-
-const sendButtonStyle: React.CSSProperties = {
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-	width: 40,
-	height: 40,
-	border: "none",
-	borderRadius: "var(--radius-md)",
-	background: "var(--primary)",
-	color: "var(--bg)",
-	cursor: "pointer",
-	flexShrink: 0,
-};
-
-// Dropdown
-const dropdownStyle: React.CSSProperties = {
-	position: "absolute",
-	bottom: "100%",
-	left: 0,
-	right: 0,
-	marginBottom: "0.25rem",
-	background: "var(--surface-raised)",
-	border: "1px solid var(--border-hover)",
-	borderRadius: "var(--radius-md)",
-	boxShadow: "var(--shadow-md)",
-	overflow: "hidden",
-	zIndex: 100,
-};
-
-const commandItemStyle: React.CSSProperties = {
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "space-between",
-	width: "100%",
-	padding: "0.4375rem 0.75rem",
-	background: "none",
-	border: "none",
-	cursor: "pointer",
-	textAlign: "left",
-	color: "var(--ink)",
-};
-
-const commandItemActiveStyle: React.CSSProperties = {
-	background: "var(--surface)",
-};
-
-const commandItemMainStyle: React.CSSProperties = {
-	display: "flex",
-	alignItems: "center",
-	gap: "0.5rem",
-	minWidth: 0,
-};
-
-const commandItemKeyStyle: React.CSSProperties = {
-	fontFamily: "var(--font-mono)",
-	fontSize: "0.75rem",
-	fontWeight: 600,
-	color: "var(--primary-bright)",
-	flexShrink: 0,
-};
-
-const commandItemDescStyle: React.CSSProperties = {
-	fontSize: "0.6875rem",
-	color: "var(--ink-dim)",
-	overflow: "hidden",
-	textOverflow: "ellipsis",
-	whiteSpace: "nowrap",
-};
-
-const commandItemEnterStyle: React.CSSProperties = {
-	fontSize: "0.625rem",
-	color: "var(--ink-dim)",
-	flexShrink: 0,
-};

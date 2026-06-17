@@ -2647,6 +2647,18 @@ export class InteractiveMode {
 				return;
 			}
 
+			if (text.startsWith("/compare ")) {
+				this.editor.setText("");
+				await this.handleCompareCommand(text);
+				return;
+			}
+
+			if (text === "/publish" || text.startsWith("/publish ")) {
+				this.editor.setText("");
+				await this.handlePublishCommand(text);
+				return;
+			}
+
 			// Handle bash command (! for normal, !! for excluded from context)
 			if (text.startsWith("!")) {
 				const isExcluded = text.startsWith("!!");
@@ -5140,6 +5152,172 @@ export class InteractiveMode {
 			}
 		} catch (error: unknown) {
 			this.showError(`Failed to export session: ${error instanceof Error ? error.message : "Unknown error"}`);
+		}
+	}
+
+	private async handleCompareCommand(text: string): Promise<void> {
+		// Parse: /compare <model1> <model2> ...
+		const argsString = text.slice("/compare ".length).trim();
+		if (!argsString) {
+			this.showError("Usage: /compare <provider/model> [provider/model2 ...]");
+			return;
+		}
+
+		const modelSpecs = argsString.split(/\s+/).filter(Boolean);
+		if (modelSpecs.length < 2) {
+			this.showError("Usage: /compare <model1> <model2> [model3 ...]");
+			return;
+		}
+
+		try {
+			// Get current session context
+			const sessionContext = this.session.sessionManager.buildSessionContext();
+			const systemPrompt = this.session.systemPrompt;
+			const tools = this.session.agent.state.tools;
+			const modelRegistry = this.session.modelRegistry;
+
+			// Resolve models
+			const resolvedModels: Array<{
+				model: import("@drewsepsi/squido-ai").Model<any>;
+				getApiKey: () => string | undefined;
+			}> = [];
+			for (const spec of modelSpecs) {
+				const slashIdx = spec.indexOf("/");
+				if (slashIdx === -1) {
+					this.showError(`Invalid model spec "${spec}". Use "provider/modelId" format.`);
+					return;
+				}
+				const provider = spec.slice(0, slashIdx);
+				const modelId = spec.slice(slashIdx + 1);
+				const model = modelRegistry.find(provider, modelId);
+				if (!model) {
+					this.showError(`Model not found: ${spec}`);
+					return;
+				}
+				const authResult = await modelRegistry.getApiKeyAndHeaders(model);
+				if (!authResult.ok) {
+					this.showError(`No API key configured for ${spec}`);
+					return;
+				}
+				const apiKey = authResult.apiKey;
+				resolvedModels.push({
+					model,
+					getApiKey: () => apiKey,
+				});
+			}
+
+			// Show progress
+			this.showStatus(`Comparing ${resolvedModels.length} models...`);
+
+			// Run comparison
+			const { compareModels } = await import("../../core/compare-executor.ts");
+			const result = await compareModels(systemPrompt, sessionContext.messages, tools, resolvedModels, {
+				prompt: "",
+				onProgress: (p) => {
+					if (p.status === "complete") {
+						this.showStatus(`${p.model}: Done`);
+					} else if (p.status === "error") {
+						this.showWarning(`${p.model}: ${p.message ?? "Failed"}`);
+					}
+				},
+			});
+
+			// Display comparison results in TUI
+			this.displayComparisonResult(result);
+
+			// Save comparison to session
+			this.saveComparisonToSession(result);
+		} catch (error: unknown) {
+			this.showError(`Compare failed: ${error instanceof Error ? error.message : String(error)}`);
+		}
+	}
+
+	private displayComparisonResult(result: import("../../core/compare-types.ts").ComparisonResult): void {
+		// Add comparison result to the message area
+		try {
+			const { ComparisonViewComponent } = require("./components/comparison-view.ts");
+			const component = new ComparisonViewComponent(result);
+			this.chatContainer.addChild(component);
+			this.ui.requestRender();
+		} catch {
+			// Fallback: show text summary
+			const modelLabels = result.results.map((r) => `${r.model.provider}/${r.model.id}`).join(", ");
+			this.showStatus(`Comparison complete: ${modelLabels}`);
+			for (const r of result.results) {
+				if (r.success) {
+					this.showStatus(
+						`${r.model.provider}/${r.model.id}: ${r.usage.totalTokens} tokens, $${r.usage.cost.toFixed(6)}, ${r.latencyMs}ms`,
+					);
+				} else {
+					this.showWarning(`${r.model.provider}/${r.model.id}: Failed - ${r.errorMessage ?? "Unknown error"}`);
+				}
+			}
+		}
+	}
+
+	private saveComparisonToSession(result: import("../../core/compare-types.ts").ComparisonResult): void {
+		try {
+			const entryData: import("../../core/compare-types.ts").ComparisonSessionData = {
+				type: "comparison",
+				prompt: result.prompt,
+				models: result.results.map((r) => ({ provider: r.model.provider, modelId: r.model.id })),
+				forkEntryIds: [],
+				timestamp: result.timestamp,
+			};
+			this.session.sessionManager.appendCustomEntry("comparison", entryData);
+		} catch {
+			// Non-critical failure - just log
+		}
+	}
+
+	private async handlePublishCommand(text: string): Promise<void> {
+		// Parse optional output path
+		const outputPath = text.startsWith("/publish ") ? text.slice("/publish ".length).trim() : undefined;
+
+		try {
+			this.showStatus("Preparing publish artifact...");
+
+			const { publishSession } = await import("../../core/export-html/publish.ts");
+			const entries = this.session.sessionManager.getEntries();
+
+			// Check for comparison data in session
+			let comparisonData: import("../../core/compare-types.ts").ComparisonResult | undefined;
+			const customEntries = entries.filter(
+				(e) => e.type === "custom" && (e as { customType?: string }).customType === "comparison",
+			);
+			if (customEntries.length > 0) {
+				const latestComparison = customEntries[customEntries.length - 1] as {
+					data?: import("../../core/compare-types.ts").ComparisonSessionData;
+				};
+				if (latestComparison.data) {
+					// Reconstruct comparison result from stored data
+					const compData = latestComparison.data;
+					comparisonData = {
+						prompt: compData.prompt,
+						results: [],
+						timestamp: compData.timestamp,
+						label: compData.label,
+					};
+				}
+			}
+
+			const result = await publishSession({
+				entries,
+				comparisonData,
+				redact: true,
+				outputPath,
+			});
+
+			let message = `Published to: ${result.filePath}`;
+			if (result.redactedCount > 0) {
+				message += ` (${result.redactedCount} entries redacted)`;
+			}
+			if (result.secretWarnings.length > 0) {
+				message += ` | ${result.secretWarnings.length} potential secrets detected in redacted entries`;
+			}
+			this.showStatus(message);
+		} catch (error: unknown) {
+			this.showError(`Publish failed: ${error instanceof Error ? error.message : String(error)}`);
 		}
 	}
 

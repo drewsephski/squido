@@ -4,6 +4,7 @@ import { ChatMessages, type DisplayMessage } from "./ChatMessages.tsx";
 import { ChatInput } from "./ChatInput.tsx";
 import { StatusBar } from "./StatusBar.tsx";
 import { ContextPanel } from "./ContextPanel.tsx";
+import { SessionSidebar } from "./SessionSidebar.tsx";
 import "./agent.css";
 
 const WS_URL = `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/ws`;
@@ -40,18 +41,6 @@ function extractThinking(content: unknown): string[] {
 		.filter(Boolean);
 }
 
-const SLASH_COMMANDS = [
-	{ cmd: "/help", desc: "Show available commands" },
-	{ cmd: "/clear", desc: "Clear chat history" },
-	{ cmd: "/model", desc: "Open model picker" },
-	{ cmd: "/think", desc: "Set thinking level (off/low/medium/high)" },
-	{ cmd: "/session", desc: "Show session information" },
-	{ cmd: "/export", desc: "Export session to file" },
-	{ cmd: "/changelog", desc: "View version changelog" },
-];
-
-const THINKING_LEVELS = ["off", "low", "medium", "high"] as const;
-
 interface ApiModel {
 	provider: string;
 	id: string;
@@ -66,14 +55,10 @@ export function AgentPage() {
 	const [isStreaming, setIsStreaming] = useState(false);
 	const [sidebarOpen, setSidebarOpen] = useState(true);
 	const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
-	const [modelPickerOpen, setModelPickerOpen] = useState(false);
-	const [modelSearch, setModelSearch] = useState("");
 	const [availableModels, setAvailableModels] = useState<ApiModel[]>([]);
 	const [modelsLoading, setModelsLoading] = useState(false);
 	const [modelsError, setModelsError] = useState<string | null>(null);
 	const [optimisticModel, setOptimisticModel] = useState<{ provider: string; id: string } | null>(null);
-	const pickerRef = useRef<HTMLDivElement>(null);
-	const searchRef = useRef<HTMLInputElement>(null);
 	const modelsFetchCount = useRef(0);
 	const streamingMsgId = useRef<string | null>(null);
 	const promptQueueRef = useRef<string[]>([]);
@@ -86,41 +71,6 @@ export function AgentPage() {
 		isError: boolean;
 	}>>(new Map());
 
-	// Focus search when picker opens
-	useEffect(() => {
-		if (modelPickerOpen && searchRef.current) {
-			searchRef.current.focus();
-		}
-	}, [modelPickerOpen]);
-
-	// Close picker on click outside / Escape key
-	useEffect(() => {
-		if (!modelPickerOpen) return;
-		const close = () => {
-			setModelPickerOpen(false);
-			setModelSearch("");
-		};
-		const clickHandler = (e: MouseEvent) => {
-			if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
-				close();
-			}
-		};
-		const keyHandler = (e: KeyboardEvent) => {
-			if (e.key === "Escape") {
-				close();
-			}
-		};
-		// Small delay so the click that opened the picker doesn't close it
-		const raf = requestAnimationFrame(() => {
-			document.addEventListener("mousedown", clickHandler);
-			document.addEventListener("keydown", keyHandler);
-		});
-		return () => {
-			cancelAnimationFrame(raf);
-			document.removeEventListener("mousedown", clickHandler);
-			document.removeEventListener("keydown", keyHandler);
-		};
-	}, [modelPickerOpen]);
 
 	const handleEvent = useCallback((event: AgentSessionEvent) => {
 		switch (event.type) {
@@ -371,7 +321,7 @@ export function AgentPage() {
 				return;
 
 			case "/model":
-				setModelPickerOpen(true);
+				setRightSidebarOpen(true);
 				return;
 
 			case "/think":
@@ -492,55 +442,29 @@ export function AgentPage() {
 	const handleSetModel = useCallback((provider: string, modelId: string) => {
 		send({ type: "set_model", provider, modelId });
 		setOptimisticModel({ provider, id: modelId });
-		setModelPickerOpen(false);
-		setModelSearch("");
 	}, [send]);
+
+	const handleNewSession = useCallback(() => {
+		if (status !== "connected") {
+			connect();
+		}
+	}, [connect, status]);
+
+	const handleSelectSession = useCallback((_id: string) => {
+		// Session switching not yet implemented
+	}, []);
 
 	const isConnected = status === "connected";
 	const effectiveModel = optimisticModel ?? state?.model ?? null;
-	const currentModelKey = effectiveModel
-		? `${effectiveModel.provider}/${effectiveModel.id}`
-		: null;
-
-	// Merge API models with current model from state (ensures current model always appears)
-	const allModels = (() => {
-		const seen = new Set(availableModels.map((m) => `${m.provider}/${m.id}`));
-		const merged = [...availableModels];
-		if (effectiveModel && !seen.has(currentModelKey!)) {
-			merged.push({
-				provider: effectiveModel.provider,
-				id: effectiveModel.id,
-			});
-		}
-		return merged;
-	})();
-
-	// Group models by provider, filtered by search
-	const lowerSearch = modelSearch.toLowerCase();
-	const modelsByProvider: Record<string, ApiModel[]> = {};
-	for (const m of allModels) {
-		if (
-			modelSearch &&
-			!m.id.toLowerCase().includes(lowerSearch) &&
-			!m.provider.toLowerCase().includes(lowerSearch)
-		) {
-			continue;
-		}
-		if (!modelsByProvider[m.provider]) {
-			modelsByProvider[m.provider] = [];
-		}
-		modelsByProvider[m.provider].push(m);
-	}
 
 	return (
-		<div style={pageStyle}>
+		<div className="agent-workspace">
 			{/* Top bar */}
-			<div style={topBarStyle}>
-				<div style={topBarLeftStyle}>
+			<div className="agent-topbar">
+				<div className="agent-topbar-left">
 					<button
 						onClick={() => setSidebarOpen(!sidebarOpen)}
 						className="agent-panel-toggle"
-						style={panelToggleStyle}
 						aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
 					>
 						{sidebarOpen ? (
@@ -555,25 +479,34 @@ export function AgentPage() {
 							</svg>
 						)}
 					</button>
-					<span style={brandTextStyle}>Squido Agent</span>
-					<span style={brandBadgeStyle}>IDE</span>
+					<span className="agent-topbar-brand">
+						Squi<span className="agent-topbar-brand-amber">do</span>
+					</span>
 				</div>
-				<div style={topBarRightStyle}>
-					{status === "connected" && effectiveModel && (
+
+				<div className="agent-topbar-center">
+					{isConnected && state?.sessionName && (
+						<span className="agent-topbar-session-name">
+							{state.sessionName}
+						</span>
+					)}
+				</div>
+
+				<div className="agent-topbar-right">
+					{isConnected && effectiveModel && (
 						<>
-							<span style={modelBadgeStyle}>
-								<span style={modelBadgeDotStyle} />
+							<span className="agent-topbar-model-badge">
+								<span className="agent-topbar-model-dot" />
 								{effectiveModel.id}
 							</span>
 							{state?.thinkingLevel && state.thinkingLevel !== "off" && (
-								<span style={thinkBadgeStyle}>{state.thinkingLevel}</span>
+								<span className="agent-topbar-think-badge">{state.thinkingLevel}</span>
 							)}
 						</>
 					)}
 					<button
 						onClick={() => setRightSidebarOpen(!rightSidebarOpen)}
 						className="agent-panel-toggle"
-						style={panelToggleStyle}
 						aria-label={rightSidebarOpen ? "Close context panel" : "Open context panel"}
 					>
 						{rightSidebarOpen ? (
@@ -591,203 +524,18 @@ export function AgentPage() {
 				</div>
 			</div>
 
-			<div style={bodyStyle}>
-				{/* Left sidebar */}
-				<div style={sidebarOpen ? sidebarOpenStyle : sidebarClosedStyle}>
-					{/* Session info */}
-					<div style={cardStyle}>
-						<div style={cardTitleStyle}>Session</div>
-						<div style={cardBodyStyle}>
-							{isConnected && state ? (
-								<>
-									<div style={infoRowStyle}>
-										<span style={infoLabelStyle}>Name</span>
-										<span style={infoValueStyle}>
-											{state.sessionName || "Unnamed"}
-										</span>
-									</div>
-									<div style={infoRowStyle}>
-										<span style={infoLabelStyle}>ID</span>
-										<span style={infoValueMonoStyle}>
-											{state.sessionId.slice(0, 12)}...
-										</span>
-									</div>
-									<div style={infoRowStyle}>
-										<span style={infoLabelStyle}>Messages</span>
-										<span style={infoValueStyle}>{state.messageCount}</span>
-									</div>
-									<div style={infoRowStyle}>
-										<span style={infoLabelStyle}>Directory</span>
-										<span style={infoValueMonoStyle}>
-											{state.cwd.split("\\").pop()?.split("/").pop() || state.cwd}
-										</span>
-									</div>
-								</>
-							) : (
-								<div style={disconnectedHintStyle}>
-									Connect to see session info
-								</div>
-							)}
-						</div>
-					</div>
-
-					{/* Model controls */}
-					<div style={cardStyle}>
-						<div style={cardTitleStyle}>Model</div>
-						<div style={cardBodyStyle}>
-							{isConnected && effectiveModel ? (
-								<>
-									<div style={modelCurrentBoxStyle}>
-										<span style={modelProviderStyle}>{effectiveModel.provider}</span>
-										<span style={modelNameStyle}>{effectiveModel.id}</span>
-									</div>
-
-									{/* Model picker trigger */}
-									<div style={{ position: "relative" }}>
-										<button
-											onClick={() => setModelPickerOpen(!modelPickerOpen)}
-											style={changeModelButtonStyle}
-										>
-											Change model
-											<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ marginLeft: "0.25rem" }}>
-												<polyline points="6 9 12 15 18 9" />
-											</svg>
-										</button>
-
-										{/* Model picker dropdown */}
-										{modelPickerOpen && (
-											<>
-												<div style={pickerBackdropStyle} />
-												<div ref={pickerRef} style={pickerOverlayStyle}>
-												<div style={pickerHeaderStyle}>
-													<input
-														ref={searchRef}
-														type="text"
-														placeholder="Search models..."
-														value={modelSearch}
-														onChange={(e) => setModelSearch(e.target.value)}
-														style={pickerSearchStyle}
-													/>
-													<span style={pickerCountStyle}>
-														{allModels.length} available
-													</span>
-												</div>
-												<div style={pickerListStyle} className="model-picker-list">
-													{modelsLoading ? (
-														<div style={pickerLoadingStyle}>Loading models...</div>
-													) : allModels.length === 0 && !modelSearch ? (
-														<div style={pickerEmptyStyle}>
-															<div style={pickerEmptyTitleStyle}>No models available</div>
-															<div style={pickerEmptySubStyle}>
-																{modelsError
-																	? `Failed to load models: ${modelsError}`
-																	: "No models found. Configure providers in settings."}
-															</div>
-														</div>
-													) : Object.keys(modelsByProvider).length === 0 ? (
-														<div style={pickerEmptyStyle}>
-															No models match "{modelSearch}"
-														</div>
-													) : (
-														Object.entries(modelsByProvider).map(([provider, models]) => (
-															<div key={provider}>
-																<div style={providerGroupHeaderStyle}>
-																	{provider}
-																	<span style={providerCountStyle}>{models.length}</span>
-																</div>
-																{models.map((m) => {
-																	const key = `${m.provider}/${m.id}`;
-																	const isCurrent = key === currentModelKey;
-																	return (
-																		<button
-																			key={key}
-																			onClick={() => handleSetModel(m.provider, m.id)}
-																			style={{
-																				...modelItemStyle,
-																				...(isCurrent ? modelItemActiveStyle : {}),
-																			}}
-																		>
-																			<div style={modelItemMainStyle}>
-																				<span style={modelItemIdStyle}>
-																					{m.name && m.name !== m.id ? m.name : m.id}
-																				</span>
-																				{m.reasoning && (
-																					<span style={modelItemTagStyle}>think</span>
-																				)}
-																			</div>
-																			<div style={modelItemMetaStyle}>
-																				{m.contextWindow && (
-																					<span>{formatTokens(m.contextWindow)} ctx</span>
-																				)}
-																				{isCurrent && (
-																					<span style={modelItemCurrentBadgeStyle}>active</span>
-																				)}
-																			</div>
-																		</button>
-																	);
-																})}
-															</div>
-														))
-													)}
-												</div>
-												</div>
-											</>
-										)}
-									</div>
-
-									{/* Thinking level */}
-									<div style={thinkingSectionStyle}>
-										<label style={infoLabelStyle}>Thinking</label>
-										<div style={thinkingButtonGroupStyle}>
-											{THINKING_LEVELS.map((level) => (
-												<button
-													key={level}
-													onClick={() => handleSetThinking(level)}
-													style={{
-														...thinkingButtonStyle,
-												...(state?.thinkingLevel === level
-													? thinkingButtonActiveStyle
-													: {}),
-													}}
-												>
-													{level}
-												</button>
-											))}
-										</div>
-									</div>
-								</>
-							) : (
-								<div style={disconnectedHintStyle}>
-									Connect to configure model
-								</div>
-							)}
-						</div>
-					</div>
-
-					{/* Commands */}
-					<div style={cardStyle}>
-						<div style={cardTitleStyle}>Commands</div>
-						<div style={cardBodyStyle}>
-							{SLASH_COMMANDS.map(({ cmd, desc }) => (
-								<div key={cmd} style={commandRowStyle}>
-									<span style={commandNameStyle}>{cmd}</span>
-									<span style={commandDescStyle}>{desc}</span>
-								</div>
-							))}
-						</div>
-					</div>
-
-					{/* Terminal hint */}
-					<div style={terminalHintStyle}>
-						<span style={terminalHintIconStyle}>~</span>
-						<span style={terminalHintTextStyle}>
-							Run <code style={inlineCodeStyle}>squido</code> in your terminal for the full TUI experience
-						</span>
-					</div>
+			<div className="agent-body">
+				{/* Left sidebar — Sessions */}
+				<div className={`agent-sessions${sidebarOpen ? "" : " collapsed"}`}>
+					<SessionSidebar
+						state={state}
+						onNewSession={handleNewSession}
+						onSelectSession={handleSelectSession}
+					/>
 				</div>
 
 				{/* Main chat area */}
-				<div style={chatAreaStyle}>
+				<div className="agent-chat">
 					<StatusBar
 						status={status}
 						state={state}
@@ -806,529 +554,20 @@ export function AgentPage() {
 					/>
 				</div>
 
-				{/* Right sidebar */}
-				<div style={rightSidebarOpen ? contextOpenStyle : contextClosedStyle}>
-					<ContextPanel status={status} state={state} onSetThinking={handleSetThinking} />
+				{/* Right sidebar — Context */}
+				<div className={`agent-context${rightSidebarOpen ? "" : " collapsed"}`}>
+					<ContextPanel
+						status={status}
+						state={state}
+						onSetThinking={handleSetThinking}
+						onSetModel={handleSetModel}
+						effectiveModel={effectiveModel}
+						availableModels={availableModels}
+						modelsLoading={modelsLoading}
+						modelsError={modelsError}
+					/>
 				</div>
 			</div>
 		</div>
 	);
 }
-
-function formatTokens(n: number): string {
-	if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-	if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-	return String(n);
-}
-
-// Layout
-const pageStyle: React.CSSProperties = {
-	display: "flex",
-	flexDirection: "column",
-	height: "100vh",
-	background: "var(--bg)",
-};
-
-const topBarStyle: React.CSSProperties = {
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "space-between",
-	padding: "0 1rem",
-	height: 44,
-	background: "var(--surface-raised)",
-	borderBottom: "1px solid var(--border)",
-	flexShrink: 0,
-};
-
-const topBarLeftStyle: React.CSSProperties = {
-	display: "flex",
-	alignItems: "center",
-	gap: "0.625rem",
-};
-
-const topBarRightStyle: React.CSSProperties = {
-	display: "flex",
-	alignItems: "center",
-	gap: "0.5rem",
-};
-
-const panelToggleStyle: React.CSSProperties = {
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-	width: 28,
-	height: 28,
-	background: "none",
-	border: "none",
-	color: "var(--ink-muted)",
-	cursor: "pointer",
-	borderRadius: "var(--radius-sm)",
-	padding: 0,
-};
-
-const brandTextStyle: React.CSSProperties = {
-	fontFamily: "var(--font-mono)",
-	fontSize: "0.8125rem",
-	fontWeight: 600,
-	color: "var(--ink-muted)",
-	letterSpacing: "-0.01em",
-};
-
-const brandBadgeStyle: React.CSSProperties = {
-	fontFamily: "var(--font-mono)",
-	fontSize: "0.625rem",
-	fontWeight: 500,
-	color: "var(--accent)",
-	background: "var(--accent-muted)",
-	padding: "0.0625rem 0.375rem",
-	borderRadius: "var(--radius-sm)",
-	opacity: 0.8,
-};
-
-const modelBadgeStyle: React.CSSProperties = {
-	display: "flex",
-	alignItems: "center",
-	gap: "0.375rem",
-	fontFamily: "var(--font-mono)",
-	fontSize: "0.6875rem",
-	color: "var(--ink-muted)",
-	background: "var(--surface)",
-	padding: "0.1875rem 0.5rem",
-	borderRadius: "var(--radius-sm)",
-	border: "1px solid var(--border)",
-};
-
-const modelBadgeDotStyle: React.CSSProperties = {
-	width: 6,
-	height: 6,
-	borderRadius: "50%",
-	background: "var(--success)",
-	flexShrink: 0,
-};
-
-const thinkBadgeStyle: React.CSSProperties = {
-	fontFamily: "var(--font-mono)",
-	fontSize: "0.625rem",
-	color: "var(--accent)",
-	background: "var(--accent-muted)",
-	padding: "0.125rem 0.375rem",
-	borderRadius: "var(--radius-sm)",
-	textTransform: "uppercase",
-	letterSpacing: "0.04em",
-};
-
-const bodyStyle: React.CSSProperties = {
-	display: "flex",
-	flex: 1,
-	overflow: "hidden",
-};
-
-// Sidebar
-const sidebarBaseStyle: React.CSSProperties = {
-	flexShrink: 0,
-	background: "var(--surface)",
-	display: "flex",
-	flexDirection: "column",
-	gap: "0.75rem",
-	transition: "width 0.25s ease, padding 0.25s ease, border 0.25s ease",
-};
-
-const sidebarOpenStyle: React.CSSProperties = {
-	...sidebarBaseStyle,
-	width: 260,
-	overflow: "auto",
-	padding: "0.75rem",
-	borderRight: "1px solid var(--border)",
-};
-
-const sidebarClosedStyle: React.CSSProperties = {
-	...sidebarBaseStyle,
-	width: 0,
-	overflow: "hidden",
-	padding: 0,
-	borderRight: "none",
-};
-
-// Right sidebar (context panel)
-const contextBaseStyle: React.CSSProperties = {
-	flexShrink: 0,
-	overflow: "hidden",
-	transition: "width 0.25s ease, border 0.25s ease",
-};
-
-const contextOpenStyle: React.CSSProperties = {
-	...contextBaseStyle,
-	width: 260,
-	borderLeft: "1px solid var(--border)",
-	background: "var(--surface)",
-};
-
-const contextClosedStyle: React.CSSProperties = {
-	...contextBaseStyle,
-	width: 0,
-	borderLeft: "none",
-};
-
-const cardStyle: React.CSSProperties = {
-	background: "var(--surface-raised)",
-	border: "1px solid var(--border)",
-	borderRadius: "var(--radius-md)",
-	overflow: "hidden",
-};
-
-const cardTitleStyle: React.CSSProperties = {
-	fontFamily: "var(--font-mono)",
-	fontSize: "0.625rem",
-	fontWeight: 600,
-	textTransform: "uppercase",
-	letterSpacing: "0.08em",
-	color: "var(--ink-dim)",
-	padding: "0.5rem 0.75rem",
-	borderBottom: "1px solid var(--border)",
-};
-
-const cardBodyStyle: React.CSSProperties = {
-	padding: "0.625rem 0.75rem",
-	display: "flex",
-	flexDirection: "column",
-	gap: "0.5rem",
-};
-
-// Info rows
-const infoRowStyle: React.CSSProperties = {
-	display: "flex",
-	justifyContent: "space-between",
-	alignItems: "center",
-	gap: "0.5rem",
-};
-
-const infoLabelStyle: React.CSSProperties = {
-	fontSize: "0.6875rem",
-	color: "var(--ink-dim)",
-	fontWeight: 500,
-	flexShrink: 0,
-};
-
-const infoValueStyle: React.CSSProperties = {
-	fontSize: "0.6875rem",
-	color: "var(--ink-muted)",
-	textAlign: "right",
-	overflow: "hidden",
-	textOverflow: "ellipsis",
-	whiteSpace: "nowrap",
-};
-
-const infoValueMonoStyle: React.CSSProperties = {
-	...infoValueStyle,
-	fontFamily: "var(--font-mono)",
-	fontSize: "0.625rem",
-};
-
-const disconnectedHintStyle: React.CSSProperties = {
-	fontSize: "0.6875rem",
-	color: "var(--ink-dim)",
-	fontStyle: "italic",
-};
-
-// Model display
-const modelCurrentBoxStyle: React.CSSProperties = {
-	display: "flex",
-	flexDirection: "column",
-	gap: "0.125rem",
-	padding: "0.375rem 0.5rem",
-	background: "var(--bg)",
-	borderRadius: "var(--radius-sm)",
-	border: "1px solid var(--border)",
-};
-
-const modelProviderStyle: React.CSSProperties = {
-	fontSize: "0.625rem",
-	color: "var(--ink-dim)",
-	fontFamily: "var(--font-mono)",
-	textTransform: "uppercase",
-	letterSpacing: "0.06em",
-};
-
-const modelNameStyle: React.CSSProperties = {
-	fontSize: "0.6875rem",
-	color: "var(--ink)",
-	fontFamily: "var(--font-mono)",
-	fontWeight: 500,
-	wordBreak: "break-all",
-};
-
-const changeModelButtonStyle: React.CSSProperties = {
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-	width: "100%",
-	background: "none",
-	border: "1px solid var(--border)",
-	borderRadius: "var(--radius-sm)",
-	color: "var(--ink-muted)",
-	fontSize: "0.625rem",
-	fontFamily: "var(--font-mono)",
-	padding: "0.3125rem 0.5rem",
-	cursor: "pointer",
-};
-
-// Model picker dropdown
-const pickerBackdropStyle: React.CSSProperties = {
-	position: "fixed",
-	inset: 0,
-	background: "rgba(0,0,0,0.4)",
-	zIndex: 999,
-};
-
-const pickerOverlayStyle: React.CSSProperties = {
-	position: "fixed",
-	top: "50%",
-	left: "50%",
-	transform: "translate(-50%, -50%)",
-	width: 400,
-	maxWidth: "90vw",
-	maxHeight: "70vh",
-	background: "var(--surface-raised)",
-	border: "1px solid var(--border-hover)",
-	borderRadius: "var(--radius-lg)",
-	boxShadow: "var(--shadow-lg)",
-	zIndex: 1000,
-	display: "flex",
-	flexDirection: "column",
-	overflow: "hidden",
-};
-
-const pickerHeaderStyle: React.CSSProperties = {
-	display: "flex",
-	flexDirection: "column",
-	gap: "0.375rem",
-	padding: "0.75rem",
-	borderBottom: "1px solid var(--border)",
-};
-
-const pickerSearchStyle: React.CSSProperties = {
-	width: "100%",
-	padding: "0.5rem 0.625rem",
-	fontFamily: "var(--font-body)",
-	fontSize: "0.8125rem",
-	color: "var(--ink)",
-	background: "var(--bg)",
-	border: "1px solid var(--border)",
-	borderRadius: "var(--radius-sm)",
-	outline: "none",
-};
-
-const pickerCountStyle: React.CSSProperties = {
-	fontSize: "0.625rem",
-	color: "var(--ink-dim)",
-	fontFamily: "var(--font-mono)",
-	paddingLeft: "0.125rem",
-};
-
-const pickerListStyle: React.CSSProperties = {
-	flex: 1,
-	overflow: "auto",
-	padding: "0.25rem 0",
-};
-
-const pickerLoadingStyle: React.CSSProperties = {
-	padding: "2rem",
-	textAlign: "center",
-	fontSize: "0.75rem",
-	color: "var(--ink-dim)",
-};
-
-const pickerEmptyStyle: React.CSSProperties = {
-	padding: "2rem",
-	textAlign: "center",
-	fontSize: "0.75rem",
-	color: "var(--ink-dim)",
-};
-
-const pickerEmptyTitleStyle: React.CSSProperties = {
-	fontSize: "0.8125rem",
-	fontWeight: 600,
-	color: "var(--ink-muted)",
-	marginBottom: "0.25rem",
-};
-
-const pickerEmptySubStyle: React.CSSProperties = {
-	fontSize: "0.6875rem",
-	color: "var(--ink-dim)",
-	lineHeight: 1.4,
-};
-
-const providerGroupHeaderStyle: React.CSSProperties = {
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "space-between",
-	padding: "0.375rem 0.75rem 0.1875rem",
-	fontSize: "0.625rem",
-	fontFamily: "var(--font-mono)",
-	fontWeight: 600,
-	color: "var(--ink-dim)",
-	textTransform: "uppercase",
-	letterSpacing: "0.06em",
-};
-
-const providerCountStyle: React.CSSProperties = {
-	fontSize: "0.5625rem",
-	color: "var(--ink-dim)",
-	background: "var(--surface)",
-	padding: "0.0625rem 0.3125rem",
-	borderRadius: "var(--radius-sm)",
-};
-
-const modelItemStyle: React.CSSProperties = {
-	display: "flex",
-	flexDirection: "column",
-	gap: "0.125rem",
-	width: "100%",
-	padding: "0.375rem 0.75rem",
-	background: "none",
-	border: "none",
-	cursor: "pointer",
-	textAlign: "left",
-	fontFamily: "var(--font-body)",
-	borderLeft: "2px solid transparent",
-};
-
-const modelItemActiveStyle: React.CSSProperties = {
-	background: "var(--surface)",
-	borderLeftColor: "var(--primary)",
-};
-
-const modelItemMainStyle: React.CSSProperties = {
-	display: "flex",
-	alignItems: "center",
-	gap: "0.375rem",
-};
-
-const modelItemIdStyle: React.CSSProperties = {
-	fontSize: "0.75rem",
-	color: "var(--ink)",
-	fontFamily: "var(--font-mono)",
-	fontWeight: 500,
-};
-
-const modelItemTagStyle: React.CSSProperties = {
-	fontSize: "0.5625rem",
-	color: "var(--accent)",
-	background: "var(--accent-muted)",
-	padding: "0.0625rem 0.3125rem",
-	borderRadius: "var(--radius-sm)",
-	fontFamily: "var(--font-mono)",
-	textTransform: "uppercase",
-	letterSpacing: "0.04em",
-};
-
-const modelItemMetaStyle: React.CSSProperties = {
-	display: "flex",
-	alignItems: "center",
-	gap: "0.375rem",
-	fontSize: "0.5625rem",
-	color: "var(--ink-dim)",
-	fontFamily: "var(--font-mono)",
-};
-
-const modelItemCurrentBadgeStyle: React.CSSProperties = {
-	color: "var(--primary)",
-	fontWeight: 600,
-};
-
-// Thinking
-const thinkingSectionStyle: React.CSSProperties = {
-	display: "flex",
-	flexDirection: "column",
-	gap: "0.375rem",
-};
-
-const thinkingButtonGroupStyle: React.CSSProperties = {
-	display: "flex",
-	gap: "0.25rem",
-	flexWrap: "wrap",
-};
-
-const thinkingButtonStyle: React.CSSProperties = {
-	background: "none",
-	border: "1px solid var(--border)",
-	borderRadius: "var(--radius-sm)",
-	color: "var(--ink-dim)",
-	fontSize: "0.625rem",
-	fontFamily: "var(--font-mono)",
-	padding: "0.1875rem 0.5rem",
-	cursor: "pointer",
-	transition: "all var(--duration-fast) var(--ease-out)",
-};
-
-const thinkingButtonActiveStyle: React.CSSProperties = {
-	background: "var(--accent-muted)",
-	borderColor: "var(--accent)",
-	color: "var(--accent)",
-};
-
-// Commands
-const commandRowStyle: React.CSSProperties = {
-	display: "flex",
-	flexDirection: "column",
-	gap: "0.0625rem",
-	padding: "0.25rem 0",
-};
-
-const commandNameStyle: React.CSSProperties = {
-	fontFamily: "var(--font-mono)",
-	fontSize: "0.6875rem",
-	color: "var(--primary-bright)",
-	fontWeight: 500,
-};
-
-const commandDescStyle: React.CSSProperties = {
-	fontSize: "0.625rem",
-	color: "var(--ink-dim)",
-	lineHeight: 1.4,
-};
-
-// Terminal hint
-const terminalHintStyle: React.CSSProperties = {
-	display: "flex",
-	alignItems: "flex-start",
-	gap: "0.375rem",
-	padding: "0.5rem 0.75rem",
-	background: "var(--bg)",
-	borderRadius: "var(--radius-md)",
-	border: "1px solid var(--border)",
-	marginTop: "auto",
-};
-
-const terminalHintIconStyle: React.CSSProperties = {
-	color: "var(--success)",
-	fontFamily: "var(--font-mono)",
-	fontSize: "0.75rem",
-	flexShrink: 0,
-	marginTop: 1,
-};
-
-const terminalHintTextStyle: React.CSSProperties = {
-	fontSize: "0.625rem",
-	color: "var(--ink-dim)",
-	lineHeight: 1.4,
-};
-
-const inlineCodeStyle: React.CSSProperties = {
-	fontFamily: "var(--font-mono)",
-	fontSize: "0.625rem",
-	padding: "0.0625rem 0.25rem",
-	background: "var(--code-bg)",
-	border: "1px solid var(--border)",
-	borderRadius: "var(--radius-sm)",
-	color: "var(--ink-muted)",
-};
-
-// Chat area
-const chatAreaStyle: React.CSSProperties = {
-	flex: 1,
-	display: "flex",
-	flexDirection: "column",
-	minWidth: 0,
-	background: "var(--surface)",
-};

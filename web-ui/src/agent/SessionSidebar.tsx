@@ -120,12 +120,10 @@ export function SessionSidebar({ state, onNewSession, onSelectSession }: Session
 	const activeId = state?.sessionId;
 
 	return (
-		<div className="agent-sessions">
+		<>
 			<div className="agent-panel-header">
 				<span className="agent-panel-title">Sessions</span>
-				<span style={{ fontFamily: "var(--font-mono)", fontSize: "0.5625rem", color: "var(--ink-dim)" }}>
-					{sessions.length}
-				</span>
+				<span className="agent-sessions-count">{sessions.length}</span>
 			</div>
 
 			<div className="agent-sessions-search">
@@ -144,12 +142,12 @@ export function SessionSidebar({ state, onNewSession, onSelectSession }: Session
 
 			<div className="agent-sessions-list">
 				{filtered.length === 0 && (
-					<div style={{ padding: "2rem 1rem", textAlign: "center", fontSize: "0.6875rem", color: "var(--ink-dim)" }}>
+					<div className="agent-sessions-empty">
 						{search ? "No sessions match your search" : "No sessions yet"}
 					</div>
 				)}
 				{filtered.map((session) => (
-					<div key={session.id} style={{ position: "relative" }}>
+					<div key={session.id}>
 						<button
 							className={`agent-session-item${session.id === activeId ? " active" : ""}`}
 							onClick={() => onSelectSession(session.id)}
@@ -226,6 +224,6 @@ export function SessionSidebar({ state, onNewSession, onSelectSession }: Session
 					</button>
 				</div>
 			)}
-		</div>
+		</>
 	);
 }

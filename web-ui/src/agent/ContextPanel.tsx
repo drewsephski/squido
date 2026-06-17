@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from "react";
 import type { ConnectionStatus, WebSessionState } from "./useAgentWebSocket.ts";
 import "./agent.css";
 
@@ -5,6 +6,20 @@ interface ContextPanelProps {
 	status: ConnectionStatus;
 	state: WebSessionState | null;
 	onSetThinking: (level: string) => void;
+	onSetModel: (provider: string, modelId: string) => void;
+	effectiveModel: { provider: string; id: string } | null;
+	availableModels: ApiModel[];
+	modelsLoading: boolean;
+	modelsError: string | null;
+}
+
+interface ApiModel {
+	provider: string;
+	id: string;
+	name?: string;
+	contextWindow?: number;
+	reasoning?: boolean;
+	input?: string[];
 }
 
 const THINKING_LEVELS = ["off", "low", "medium", "high"] as const;
@@ -48,7 +63,12 @@ function getAgentStateLabel(state: WebSessionState | null): string {
 	return "ready";
 }
 
-export function ContextPanel({ status, state, onSetThinking }: ContextPanelProps) {
+export function ContextPanel({ status, state, onSetThinking, onSetModel, effectiveModel, availableModels, modelsLoading, modelsError }: ContextPanelProps) {
+	const [pickerOpen, setPickerOpen] = useState(false);
+	const [modelSearch, setModelSearch] = useState("");
+	const searchRef = useRef<HTMLInputElement>(null);
+	const pickerRef = useRef<HTMLDivElement>(null);
+
 	const isConnected = status === "connected";
 	const isConnecting = status === "connecting";
 	const isError = status === "error";
@@ -60,6 +80,81 @@ export function ContextPanel({ status, state, onSetThinking }: ContextPanelProps
 	// Simulate token usage from message count
 	const tokenPct = state ? Math.min((state.messageCount * 4000) / MAX_TOKENS * 100, 100) : 0;
 	const tokenClass = tokenPct > 80 ? "danger" : tokenPct > 50 ? "warning" : "";
+
+	// Autofocus search when picker opens
+	useEffect(() => {
+		if (pickerOpen && searchRef.current) {
+			searchRef.current.focus();
+		}
+	}, [pickerOpen]);
+
+	// Close picker on click outside / Escape
+	useEffect(() => {
+		if (!pickerOpen) return;
+		const close = () => {
+			setPickerOpen(false);
+			setModelSearch("");
+		};
+		const clickHandler = (e: MouseEvent) => {
+			if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+				close();
+			}
+		};
+		const keyHandler = (e: KeyboardEvent) => {
+			if (e.key === "Escape") {
+				close();
+			}
+		};
+		const raf = requestAnimationFrame(() => {
+			document.addEventListener("mousedown", clickHandler);
+			document.addEventListener("keydown", keyHandler);
+		});
+		return () => {
+			cancelAnimationFrame(raf);
+			document.removeEventListener("mousedown", clickHandler);
+			document.removeEventListener("keydown", keyHandler);
+		};
+	}, [pickerOpen]);
+
+	// Merge API models with current model (ensures current model always appears in the list)
+	const currentModelKey = effectiveModel
+		? `${effectiveModel.provider}/${effectiveModel.id}`
+		: null;
+
+	const allModels = (() => {
+		const seen = new Set(availableModels.map((m) => `${m.provider}/${m.id}`));
+		const merged = [...availableModels];
+		if (effectiveModel && !seen.has(currentModelKey!)) {
+			merged.push({
+				provider: effectiveModel.provider,
+				id: effectiveModel.id,
+			});
+		}
+		return merged;
+	})();
+
+	// Group and filter models by search
+	const lowerSearch = modelSearch.toLowerCase();
+	const modelsByProvider: Record<string, ApiModel[]> = {};
+	for (const m of allModels) {
+		if (
+			modelSearch &&
+			!m.id.toLowerCase().includes(lowerSearch) &&
+			!m.provider.toLowerCase().includes(lowerSearch)
+		) {
+			continue;
+		}
+		if (!modelsByProvider[m.provider]) {
+			modelsByProvider[m.provider] = [];
+		}
+		modelsByProvider[m.provider].push(m);
+	}
+
+	const handleSelect = (provider: string, modelId: string) => {
+		onSetModel(provider, modelId);
+		setPickerOpen(false);
+		setModelSearch("");
+	};
 
 	return (
 		<div className="agent-context">
@@ -80,20 +175,103 @@ export function ContextPanel({ status, state, onSetThinking }: ContextPanelProps
 			{/* Model */}
 			<div className="agent-context-section">
 				<div className="agent-context-section-title">Model</div>
-				{state?.model ? (
+				{effectiveModel ? (
 					<>
 						<div className="agent-model-box">
-							<span className="agent-model-provider">{state.model.provider}</span>
-							<span className="agent-model-name">{state.model.id}</span>
+							<span className="agent-model-provider">{effectiveModel.provider}</span>
+							<span className="agent-model-name">{effectiveModel.id}</span>
 						</div>
-						<div className="agent-context-section-title" style={{ marginTop: "0.625rem" }}>
+
+						{/* Inline model picker */}
+						<div ref={pickerRef} className="agent-picker-wrapper">
+							<button
+								onClick={() => setPickerOpen(!pickerOpen)}
+								className="agent-model-change-btn"
+							>
+								{pickerOpen ? "Cancel" : "Change model"}
+							</button>
+
+							{pickerOpen && (
+								<div className="agent-picker-dropdown">
+									<div className="agent-picker-search">
+										<input
+											ref={searchRef}
+											type="text"
+											placeholder="Search models..."
+											value={modelSearch}
+											onChange={(e) => setModelSearch(e.target.value)}
+											className="agent-picker-input"
+										/>
+										<span className="agent-picker-count">{allModels.length} available</span>
+									</div>
+									<div className="agent-picker-scroll">
+										{modelsLoading ? (
+											<div className="agent-picker-status">Loading models...</div>
+										) : allModels.length === 0 && !modelSearch ? (
+											<div className="agent-picker-empty">
+												<div style={{ fontWeight: 600, marginBottom: "0.125rem" }}>No models available</div>
+												<div style={{ fontSize: "0.625rem", color: "var(--ink-dim)" }}>
+													{modelsError
+														? `Failed to load: ${modelsError}`
+														: "Configure providers in settings."}
+												</div>
+											</div>
+										) : Object.keys(modelsByProvider).length === 0 ? (
+											<div className="agent-picker-empty">
+												No models match &ldquo;{modelSearch}&rdquo;
+											</div>
+										) : (
+											Object.entries(modelsByProvider).map(([provider, models]) => (
+												<div key={provider}>
+													<div className="agent-picker-provider">
+														{provider}
+														<span className="agent-picker-provider-count">{models.length}</span>
+													</div>
+													{models.map((m) => {
+														const key = `${m.provider}/${m.id}`;
+														const isCurrent = key === currentModelKey;
+														return (
+															<button
+																key={key}
+																onClick={() => handleSelect(m.provider, m.id)}
+																className={`agent-picker-model${isCurrent ? " active" : ""}`}
+															>
+																<div className="agent-picker-model-main">
+																	<span className="agent-picker-model-name">
+																		{m.name && m.name !== m.id ? m.name : m.id}
+																	</span>
+																	{m.reasoning && (
+																		<span className="agent-picker-model-tag">think</span>
+																	)}
+																</div>
+																<div className="agent-picker-model-meta">
+																	{m.contextWindow != null && (
+																		<span>{formatTokens(m.contextWindow)} ctx</span>
+																	)}
+																	{isCurrent && (
+																		<span style={{ color: "var(--primary)", fontWeight: 600 }}>active</span>
+																	)}
+																</div>
+															</button>
+														);
+													})}
+												</div>
+											))
+										)}
+									</div>
+								</div>
+							)}
+						</div>
+
+						{/* Thinking level */}
+						<div className="agent-context-section-title mt">
 							Thinking
 						</div>
 						<div className="agent-thinking-group">
 							{THINKING_LEVELS.map((level) => (
 								<button
 									key={level}
-									className={`agent-thinking-btn${state.thinkingLevel === level ? " active" : ""}`}
+									className={`agent-thinking-btn${state?.thinkingLevel === level ? " active" : ""}`}
 									onClick={() => onSetThinking(level)}
 								>
 									{level}
@@ -159,7 +337,7 @@ export function ContextPanel({ status, state, onSetThinking }: ContextPanelProps
 						</div>
 					</div>
 
-					<div style={{ marginTop: "0.625rem" }}>
+					<div className="agent-context-info-mt">
 						<div className="agent-info-row">
 							<span className="agent-info-label">Messages</span>
 							<span className="agent-info-value">{state.messageCount}</span>
@@ -167,7 +345,7 @@ export function ContextPanel({ status, state, onSetThinking }: ContextPanelProps
 						<div className="agent-info-row">
 							<span className="agent-info-label">Session ID</span>
 							<span className="agent-info-value" title={state.sessionId}>
-								{state.sessionId.slice(0, 10)}\u2026
+								{state.sessionId.slice(0, 10)}&hellip;
 							</span>
 						</div>
 						{state.cwd && (
