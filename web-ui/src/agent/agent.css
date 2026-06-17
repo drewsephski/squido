@@ -487,6 +487,7 @@
 .agent-status-row {
 	display: flex;
 	align-items: center;
+	justify-content: space-between;
 	gap: 0.5rem;
 	padding: 0.375rem 0;
 }
@@ -501,39 +502,66 @@
 }
 
 .agent-status-dot {
-	width: 7px;
-	height: 7px;
+	width: 8px;
+	height: 8px;
 	border-radius: 50%;
 	flex-shrink: 0;
 	position: relative;
+	/* Smoothly morph between states — the dot is alive */
+	transition: background 0.35s ease, box-shadow 0.35s ease, transform 0.35s ease;
 }
 
+/* Connected — steady green with warm amber-tinted glow that ties to the brand */
 .agent-status-dot.connected {
 	background: var(--success);
-	box-shadow: 0 0 6px rgb(74 222 128 / 0.3);
+	box-shadow:
+		0 0 8px rgb(242 154 58 / 0.2),
+		0 0 3px rgb(242 154 58 / 0.1);
 }
 
+/* Streaming — actively working, gentle brightness pulse */
+.agent-status-dot.streaming {
+	background: var(--success);
+	box-shadow:
+		0 0 8px rgb(242 154 58 / 0.2),
+		0 0 3px rgb(242 154 58 / 0.1);
+	animation: agent-stream-pulse 2s ease-in-out infinite;
+}
+
+/* Connecting — calm breathing, teal undertone */
 .agent-status-dot.connecting {
 	background: var(--accent);
-	animation: agent-pulse 1s ease-in-out infinite;
+	box-shadow: 0 0 10px rgb(61 139 139 / 0.25);
+	animation: agent-pulse 1.5s ease-in-out infinite;
 }
 
+/* Error — warm attention, no panic */
 .agent-status-dot.error {
 	background: var(--primary);
+	box-shadow: 0 0 10px rgb(242 154 58 / 0.3);
 }
 
+/* Disconnected — quiet, receded */
 .agent-status-dot.disconnected {
 	background: var(--ink-dim);
+	box-shadow: none;
 }
 
 .agent-status-label {
 	font-weight: 500;
+	letter-spacing: -0.01em;
 }
 
 .agent-status-state {
 	font-size: 0.625rem;
 	color: var(--ink-dim);
 	text-transform: capitalize;
+	transition: color 0.3s ease;
+}
+
+/* Streaming state label is warm to match the working indicator */
+.agent-status-state.streaming {
+	color: var(--primary);
 }
 
 /* Model info */
@@ -1019,7 +1047,8 @@
 /* ---- Reduced motion ---- */
 
 @media (prefers-reduced-motion: reduce) {
-	.agent-status-dot.connecting {
+	.agent-status-dot.connecting,
+	.agent-status-dot.streaming {
 		animation: none;
 		opacity: 1;
 	}

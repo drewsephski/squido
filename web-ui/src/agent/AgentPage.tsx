@@ -4,6 +4,7 @@ import { ChatMessages, type DisplayMessage } from "./ChatMessages.tsx";
 import { ChatInput } from "./ChatInput.tsx";
 import { StatusBar } from "./StatusBar.tsx";
 import { ContextPanel } from "./ContextPanel.tsx";
+import "./agent.css";
 
 const WS_URL = `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/ws`;
 

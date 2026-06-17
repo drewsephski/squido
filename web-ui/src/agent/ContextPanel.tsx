@@ -1,4 +1,5 @@
 import type { ConnectionStatus, WebSessionState } from "./useAgentWebSocket.ts";
+import "./agent.css";
 
 interface ContextPanelProps {
 	status: ConnectionStatus;
@@ -52,7 +53,9 @@ export function ContextPanel({ status, state, onSetThinking }: ContextPanelProps
 	const isConnecting = status === "connecting";
 	const isError = status === "error";
 
-	const dotClass = isConnected ? "connected" : isConnecting ? "connecting" : isError ? "error" : "disconnected";
+	const dotClass = isConnected
+		? (state?.isStreaming ? "streaming" : "connected")
+		: isConnecting ? "connecting" : isError ? "error" : "disconnected";
 
 	// Simulate token usage from message count
 	const tokenPct = state ? Math.min((state.messageCount * 4000) / MAX_TOKENS * 100, 100) : 0;
@@ -69,7 +72,7 @@ export function ContextPanel({ status, state, onSetThinking }: ContextPanelProps
 						<span className="agent-status-label">{getStatusLabel(status)}</span>
 					</div>
 					{isConnected && state && (
-						<span className="agent-status-state">{getAgentStateLabel(state)}</span>
+						<span className={`agent-status-state${state.isStreaming ? " streaming" : ""}`}>{getAgentStateLabel(state)}</span>
 					)}
 				</div>
 			</div>

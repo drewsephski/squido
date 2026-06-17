@@ -10,7 +10,7 @@
 
 import { type Api, type Context, type Model, registerApiProvider, streamSimple } from "@drewsepsi/squido-ai";
 import { readFileSync } from "fs";
-import { getAgentDir } from "packages/coding-agent/src/config.js";
+import { getAgentDir } from "@drewsepsi/squido-cli";
 import { join } from "path";
 import { MODELS, streamGitLabDuo } from "./index.ts";
 
