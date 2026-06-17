@@ -103,12 +103,12 @@ const emptySubStyle: React.CSSProperties = {
 };
 
 const promptListStyle: React.CSSProperties = {
-	display: "flex",
-	flexDirection: "column",
+	display: "grid",
+	gridTemplateColumns: "1fr 1fr",
 	gap: "0.375rem",
 	marginTop: "0.75rem",
 	width: "100%",
-	maxWidth: 320,
+	maxWidth: 420,
 };
 
 const promptChipStyle: React.CSSProperties = {
