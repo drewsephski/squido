@@ -4,6 +4,22 @@ export type ConnectionStatus = "connecting" | "connected" | "disconnected" | "er
 
 export type AgentSessionEvent = Record<string, unknown> & { type: string };
 
+export interface WebSessionInfo {
+	path: string;
+	id: string;
+	name?: string;
+	cwd: string;
+	messageCount: number;
+	created: string;
+	modified: string;
+}
+
+export interface WebSessionMessage {
+	role: "user" | "assistant" | "tool";
+	content: string;
+	model?: string;
+}
+
 export interface WebSessionState {
 	model: { provider: string; id: string } | null;
 	thinkingLevel: string;
@@ -11,6 +27,7 @@ export interface WebSessionState {
 	cwd: string;
 	sessionName: string | undefined;
 	sessionId: string;
+	sessionFile?: string;
 	messageCount: number;
 }
 
@@ -19,6 +36,7 @@ export interface UseAgentWebSocketResult {
 	state: WebSessionState | null;
 	lastError: string | null;
 	hasInitialState: boolean;
+	sessions: WebSessionInfo[];
 	send: (msg: unknown) => void;
 	connect: () => void;
 	disconnect: () => void;
@@ -29,6 +47,7 @@ interface UseAgentWebSocketOptions {
 	autoConnect?: boolean;
 	onEvent?: (event: AgentSessionEvent) => void;
 	onStateChange?: (state: WebSessionState) => void;
+	onSessionHistory?: (messages: WebSessionMessage[]) => void;
 	onError?: (message: string) => void;
 }
 
@@ -36,7 +55,7 @@ const MAX_RECONNECT_DELAY = 16_000;
 const BASE_RECONNECT_DELAY = 1_000;
 
 export function useAgentWebSocket(options: UseAgentWebSocketOptions): UseAgentWebSocketResult {
-	const { url, autoConnect = true, onEvent, onStateChange, onError } = options;
+	const { url, autoConnect = true, onEvent, onStateChange, onSessionHistory, onError } = options;
 	const wsRef = useRef<WebSocket | null>(null);
 	const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 	const reconnectAttemptRef = useRef(0);
@@ -45,6 +64,7 @@ export function useAgentWebSocket(options: UseAgentWebSocketOptions): UseAgentWe
 	const [state, setState] = useState<WebSessionState | null>(null);
 	const [lastError, setLastError] = useState<string | null>(null);
 	const [hasInitialState, setHasInitialState] = useState(false);
+	const [sessions, setSessions] = useState<WebSessionInfo[]>([]);
 
 	const connect = useCallback(() => {
 		if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) {
@@ -81,6 +101,15 @@ export function useAgentWebSocket(options: UseAgentWebSocketOptions): UseAgentWe
 							setLastError(msg.message);
 							onError?.(msg.message);
 							break;
+						case "session_list":
+							setSessions(msg.sessions ?? []);
+							break;
+						case "session_history":
+							onSessionHistory?.(msg.messages ?? []);
+							break;
+						case "session_renamed":
+							// State update will follow via the state message
+							break;
 					}
 				} catch {
 					// ignore malformed messages
@@ -91,7 +120,6 @@ export function useAgentWebSocket(options: UseAgentWebSocketOptions): UseAgentWe
 				setStatus("disconnected");
 				wsRef.current = null;
 
-				// Auto-reconnect unless intentionally disconnected
 				if (!disconnectRef.current && reconnectAttemptRef.current < 5) {
 					const delay = Math.min(
 						BASE_RECONNECT_DELAY * Math.pow(2, reconnectAttemptRef.current),
@@ -112,7 +140,7 @@ export function useAgentWebSocket(options: UseAgentWebSocketOptions): UseAgentWe
 			setStatus("error");
 			setLastError("Failed to create WebSocket connection");
 		}
-	}, [url, onEvent, onStateChange, onError]);
+	}, [url, onEvent, onStateChange, onSessionHistory, onError]);
 
 	const disconnect = useCallback(() => {
 		disconnectRef.current = true;
@@ -132,7 +160,6 @@ export function useAgentWebSocket(options: UseAgentWebSocketOptions): UseAgentWe
 		}
 	}, []);
 
-	// Auto-connect on mount when autoConnect is true
 	useEffect(() => {
 		if (autoConnect) {
 			connect();
@@ -140,9 +167,8 @@ export function useAgentWebSocket(options: UseAgentWebSocketOptions): UseAgentWe
 		return () => {
 			disconnect();
 		};
-	// Only run on mount
-	// eslint-disable-next-line react-hooks/exhaustive-deps
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
-	return { status, state, lastError, hasInitialState, send, connect, disconnect };
+	return { status, state, lastError, hasInitialState, sessions, send, connect, disconnect };
 }

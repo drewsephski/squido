@@ -1,8 +1,9 @@
 /**
  * HTTP + WebSocket server for the Squido web interface.
  *
- * Serves the built web-ui static files and provides a WebSocket
- * endpoint (/ws) for real-time agent interaction.
+ * Serves the built web-ui static files, provides a WebSocket
+ * endpoint (/ws) for real-time agent interaction, and REST endpoints
+ * for models and sessions.
  */
 
 import { existsSync, readFileSync, statSync } from "node:fs";
@@ -43,13 +44,13 @@ export function createWebServer(options: WebServerOptions): {
 } {
 	const staticDir = options.staticDir;
 
-	// Validate static dir exists
 	if (!existsSync(staticDir)) {
 		console.error(`Web UI static directory not found: ${staticDir}`);
 		console.error("Build the web-ui first: npm run build --workspace=squido-web-ui");
 	}
 
 	const getModels = options.getModels;
+	const listSessions = options.listSessions;
 
 	const httpServer = createServer((req: IncomingMessage, res: ServerResponse) => {
 		// Health check endpoint
@@ -64,6 +65,29 @@ export function createWebServer(options: WebServerOptions): {
 			const models = getModels?.() ?? [];
 			res.writeHead(200, { "Content-Type": "application/json" });
 			res.end(JSON.stringify({ models }));
+			return;
+		}
+
+		// Sessions listing endpoint
+		if (req.url === "/api/sessions" && req.method === "GET") {
+			listSessions?.()
+				.then((sessions) => {
+					const result = (sessions ?? []).map((s) => ({
+						path: s.path,
+						id: s.id,
+						name: s.name,
+						cwd: s.cwd,
+						messageCount: s.messageCount,
+						created: s.created.toISOString(),
+						modified: s.modified.toISOString(),
+					}));
+					res.writeHead(200, { "Content-Type": "application/json" });
+					res.end(JSON.stringify({ sessions: result }));
+				})
+				.catch((err) => {
+					res.writeHead(500, { "Content-Type": "application/json" });
+					res.end(JSON.stringify({ error: String(err) }));
+				});
 			return;
 		}
 
@@ -91,11 +115,9 @@ export function createWebServer(options: WebServerOptions): {
 
 /**
  * Serve a static file from the given directory.
- * Falls back to index.html for SPA routing (any path without a file extension
- * or paths starting with subdirectories that don't exist).
+ * Falls back to index.html for SPA routing.
  */
 function serveStatic(req: IncomingMessage, res: ServerResponse, staticDir: string): void {
-	// Strip query string
 	const rawPath = req.url?.split("?")[0] ?? "/";
 	const filePath = join(staticDir, normalize(rawPath));
 

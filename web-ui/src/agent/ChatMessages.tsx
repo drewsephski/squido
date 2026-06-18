@@ -42,11 +42,6 @@ export function ChatMessages({ messages, onPrompt }: ChatMessagesProps) {
 			<div className="agent-empty">
 				<div className="agent-empty-terminal">
 					<div className="agent-empty-brand">squido</div>
-					<div className="agent-empty-prompt">
-						<span className="agent-empty-prompt-path">~/project</span>
-						<span className="agent-empty-prompt-dollar">$</span>
-						<span className="agent-empty-cursor" />
-					</div>
 				</div>
 				<p className="agent-empty-sub">
 					Connect and direct Squido to work on your codebase

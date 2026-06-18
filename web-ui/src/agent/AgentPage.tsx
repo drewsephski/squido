@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { useAgentWebSocket, type AgentSessionEvent } from "./useAgentWebSocket.ts";
+import { useAgentWebSocket, type AgentSessionEvent, type WebSessionMessage } from "./useAgentWebSocket.ts";
 import { ChatMessages, type DisplayMessage } from "./ChatMessages.tsx";
 import { ChatInput } from "./ChatInput.tsx";
 import { StatusBar } from "./StatusBar.tsx";
@@ -43,6 +43,17 @@ function extractThinking(content: unknown): string[] {
 
 const THINKING_LEVELS = ["off", "low", "medium", "high"] as const;
 
+/** Convert WebSessionMessage to DisplayMessage */
+function sessionHistoryToDisplay(history: WebSessionMessage[]): DisplayMessage[] {
+	// Reset id counter for clean history
+	nextId = 1;
+	return history.map((msg) => ({
+		id: uid(),
+		role: msg.role,
+		content: msg.content,
+	}));
+}
+
 export function AgentPage() {
 	const [messages, setMessages] = useState<DisplayMessage[]>([]);
 	const [isStreaming, setIsStreaming] = useState(false);
@@ -83,9 +94,7 @@ export function AgentPage() {
 			case "turn_end":
 				if (streamingMsgId.current) {
 					setMessages((prev) =>
-						prev.map((m) =>
-							m.id === streamingMsgId.current ? { ...m, streaming: false } : m,
-						),
+						prev.map((m) => (m.id === streamingMsgId.current ? { ...m, streaming: false } : m)),
 					);
 					streamingMsgId.current = null;
 				}
@@ -172,9 +181,7 @@ export function AgentPage() {
 				if (id) {
 					const tc = toolCalls.current.get(toolCallId)!;
 					setMessages((prev) =>
-						prev.map((m) =>
-							m.id === id ? { ...m, toolCalls: [...(m.toolCalls ?? []), tc] } : m,
-						),
+						prev.map((m) => (m.id === id ? { ...m, toolCalls: [...(m.toolCalls ?? []), tc] } : m)),
 					);
 				}
 				break;
@@ -241,21 +248,23 @@ export function AgentPage() {
 		}
 	}, []);
 
-	const handleStateChange = useCallback(() => {
-		// State is propagated through the hook's internal state
-	}, []);
+	const handleStateChange = useCallback(() => {}, []);
 
 	const handleError = useCallback((_message: string) => {}, []);
 
-	const { status, state, lastError, hasInitialState, send, connect, disconnect } = useAgentWebSocket({
+	const handleSessionHistory = useCallback((history: WebSessionMessage[]) => {
+		setMessages(sessionHistoryToDisplay(history));
+	}, []);
+
+	const { status, state, lastError, hasInitialState, sessions, send, connect, disconnect } = useAgentWebSocket({
 		url: WS_URL,
 		autoConnect: true,
 		onEvent: handleEvent,
 		onStateChange: handleStateChange,
+		onSessionHistory: handleSessionHistory,
 		onError: handleError,
 	});
 
-	// Flush queued prompts once connected
 	useEffect(() => {
 		if (status === "connected" && promptQueueRef.current.length > 0) {
 			for (const p of promptQueueRef.current) {
@@ -265,7 +274,6 @@ export function AgentPage() {
 		}
 	}, [status, send]);
 
-	// Close thinking popover on click outside
 	useEffect(() => {
 		if (!thinkingOpen) return;
 		const handler = (e: MouseEvent) => {
@@ -341,7 +349,7 @@ export function AgentPage() {
 						"| `/think <level>` | Set thinking level (off, low, medium, high) |",
 						"| `/session` | Show session details |",
 						"| `/help` | Show this help |",
-						"\nModel and provider management is handled via the CLI. Run `squido --help` in your terminal for full options.",
+						"\nModel and provider management is handled via the CLI. Sessions can be switched using the sidebar.",
 					].join("\n");
 					const helpMsg: DisplayMessage = {
 						id: uid(),
@@ -405,12 +413,30 @@ export function AgentPage() {
 	const handleNewSession = useCallback(() => {
 		if (status !== "connected") {
 			connect();
+			return;
 		}
-	}, [connect, status]);
+		setMessages([]);
+		send({ type: "new_session" });
+	}, [connect, status, send]);
 
-	const handleSelectSession = useCallback((_id: string) => {
-		// Session switching not yet implemented
-	}, []);
+	const handleSelectSession = useCallback(
+		(sessionPath: string) => {
+			if (status !== "connected") return;
+			// Don't reload the current session
+			if (state?.sessionFile === sessionPath) return;
+			setMessages([]);
+			send({ type: "load_session", sessionPath });
+		},
+		[status, send, state?.sessionFile],
+	);
+
+	const handleRenameSession = useCallback(
+		(name: string) => {
+			if (status !== "connected") return;
+			send({ type: "rename_session", name });
+		},
+		[status, send],
+	);
 
 	const isConnected = status === "connected";
 	const currentThinking = state?.thinkingLevel ?? "off";
@@ -493,19 +519,16 @@ export function AgentPage() {
 				<div className={`agent-sessions${sidebarOpen ? "" : " collapsed"}`}>
 					<SessionSidebar
 						state={state}
+						sessions={sessions}
 						onNewSession={handleNewSession}
 						onSelectSession={handleSelectSession}
+						onRenameSession={handleRenameSession}
 					/>
 				</div>
 
 				{/* Main chat area */}
 				<div className="agent-chat">
-					<StatusBar
-						status={status}
-						state={state}
-						onConnect={connect}
-						onDisconnect={disconnect}
-					/>
+					<StatusBar status={status} state={state} onConnect={connect} onDisconnect={disconnect} />
 					<ChatMessages messages={messages} onPrompt={handlePromptClick} />
 					<ChatInput
 						onSend={handleSend}

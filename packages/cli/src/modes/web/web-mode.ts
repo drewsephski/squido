@@ -7,6 +7,7 @@
 
 import type { AddressInfo } from "node:net";
 import type { AgentSessionRuntime } from "../../core/agent-session-runtime.ts";
+import { SessionManager } from "../../core/session-manager.ts";
 import { openBrowser } from "../../utils/open-browser.ts";
 import { createWebServer } from "./web-server.ts";
 import { WebSessionBridge } from "./web-session-bridge.ts";
@@ -38,7 +39,6 @@ export async function runWebMode(runtime: AgentSessionRuntime, options: WebModeO
 		openBrowser: shouldOpenBrowser,
 		getModels: () => {
 			const registry = runtime.session.modelRegistry;
-			// Refresh to pick up any changes to models.json (same as TUI model selector)
 			registry.refresh();
 			return registry.getAll().map((m) => ({
 				provider: m.provider,
@@ -49,13 +49,16 @@ export async function runWebMode(runtime: AgentSessionRuntime, options: WebModeO
 				input: m.input,
 			}));
 		},
+		listSessions: async () => {
+			return SessionManager.listAll();
+		},
 	};
 
 	const { httpServer, wsServer } = createWebServer(serverOptions);
 
 	// Bridge new WebSocket connections to the agent session
 	wsServer.on("connection", (ws) => {
-		const bridge = new WebSessionBridge(ws, runtime.session);
+		const bridge = new WebSessionBridge(ws, runtime, serverOptions.listSessions!);
 		bridge.attach();
 	});
 
@@ -64,8 +67,6 @@ export async function runWebMode(runtime: AgentSessionRuntime, options: WebModeO
 		const addr = httpServer.address() as AddressInfo;
 		const url = `http://127.0.0.1:${addr.port}/agent`;
 
-		// OSC 8 hyperlink: clickable in modern terminals (Windows Terminal, iTerm2, kitty, etc.)
-		// Falls back to plain text in older terminals — URL displayed for copy-paste either way.
 		console.error(`Squido web interface: \x1b]8;;${url}\x1b\\Click here\x1b]8;;\x1b\\ to access the web UI (${url})`);
 
 		if (shouldOpenBrowser && staticDir) {
