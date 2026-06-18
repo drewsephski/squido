@@ -6,13 +6,6 @@ interface ConnectScreenProps {
 	onConnect: () => void;
 }
 
-const FEATURES = [
-	{ icon: "->", label: "Read files" },
-	{ icon: "$", label: "Run commands" },
-	{ icon: "+-", label: "Edit code" },
-	{ icon: "<>", label: "40+ providers" },
-];
-
 export function ConnectScreen({ status, lastError, onConnect }: ConnectScreenProps) {
 	const isConnecting = status === "connecting";
 	const isError = status === "error";
@@ -36,7 +29,7 @@ export function ConnectScreen({ status, lastError, onConnect }: ConnectScreenPro
 					</div>
 
 					<h1>Squido</h1>
-					<p>AI coding agent for the terminal. Connect to your local Squido server to read files, run commands, and edit code across 40+ providers.</p>
+					<p>AI coding agent for the terminal. Connect to your local Squido server to read files, run commands, and edit code.</p>
 
 					{isError && lastError && (
 						<div className="agent-landing-error">
@@ -47,11 +40,7 @@ export function ConnectScreen({ status, lastError, onConnect }: ConnectScreenPro
 						</div>
 					)}
 
-					<button
-						onClick={onConnect}
-						disabled={isConnecting}
-						className="agent-connect-btn"
-					>
+					<button onClick={onConnect} disabled={isConnecting} className="agent-connect-btn">
 						{isConnecting ? (
 							<>
 								<span className="agent-connect-spinner" />
@@ -67,16 +56,6 @@ export function ConnectScreen({ status, lastError, onConnect }: ConnectScreenPro
 						)}
 					</button>
 				</div>
-			</div>
-
-			{/* Features footer */}
-			<div className="agent-landing-features">
-				{FEATURES.map((f) => (
-					<div key={f.label} className="agent-landing-feature">
-						<span className="agent-landing-feature-icon">{f.icon}</span>
-						<span className="agent-landing-feature-label">{f.label}</span>
-					</div>
-				))}
 			</div>
 		</div>
 	);

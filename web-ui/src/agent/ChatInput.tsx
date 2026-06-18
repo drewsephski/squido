@@ -3,11 +3,9 @@ import { useState, useRef, useEffect, useCallback, type KeyboardEvent } from "re
 const SLASH_COMMANDS = [
 	{ cmd: "/help", desc: "Show available commands" },
 	{ cmd: "/clear", desc: "Clear chat history" },
-	{ cmd: "/model", desc: "Open model picker" },
+	{ cmd: "/model", desc: "Model management hint" },
 	{ cmd: "/think", desc: "Set thinking level (off/low/medium/high)" },
 	{ cmd: "/session", desc: "Show session information" },
-	{ cmd: "/export", desc: "Export session to file" },
-	{ cmd: "/changelog", desc: "View version changelog" },
 ];
 
 interface ChatInputProps {
@@ -70,41 +68,47 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message..." 
 		return () => document.removeEventListener("mousedown", handler);
 	}, [showCommands]);
 
-	const selectCommand = useCallback((cmd: string) => {
-		setShowCommands(false);
-		commandTriggered.current = false;
-		onSend(cmd);
-		textareaRef.current?.focus();
-	}, [onSend]);
+	const selectCommand = useCallback(
+		(cmd: string) => {
+			setShowCommands(false);
+			commandTriggered.current = false;
+			onSend(cmd);
+			textareaRef.current?.focus();
+		},
+		[onSend],
+	);
 
-	const handleKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
-		if (showCommands && filteredCommands.length > 0) {
-			if (e.key === "ArrowDown") {
-				e.preventDefault();
-				setSelectedIndex((prev) => (prev + 1) % filteredCommands.length);
-				return;
+	const handleKeyDown = useCallback(
+		(e: KeyboardEvent<HTMLTextAreaElement>) => {
+			if (showCommands && filteredCommands.length > 0) {
+				if (e.key === "ArrowDown") {
+					e.preventDefault();
+					setSelectedIndex((prev) => (prev + 1) % filteredCommands.length);
+					return;
+				}
+				if (e.key === "ArrowUp") {
+					e.preventDefault();
+					setSelectedIndex((prev) => (prev - 1 + filteredCommands.length) % filteredCommands.length);
+					return;
+				}
+				if (e.key === "Enter" && !e.shiftKey) {
+					e.preventDefault();
+					selectCommand(filteredCommands[selectedIndex].cmd);
+					return;
+				}
+				if (e.key === "Escape") {
+					setShowCommands(false);
+					return;
+				}
 			}
-			if (e.key === "ArrowUp") {
-				e.preventDefault();
-				setSelectedIndex((prev) => (prev - 1 + filteredCommands.length) % filteredCommands.length);
-				return;
-			}
-			if (e.key === "Enter" && !e.shiftKey) {
-				e.preventDefault();
-				selectCommand(filteredCommands[selectedIndex].cmd);
-				return;
-			}
-			if (e.key === "Escape") {
-				setShowCommands(false);
-				return;
-			}
-		}
 
-		if (e.key === "Enter" && !e.shiftKey && !showCommands) {
-			e.preventDefault();
-			submit();
-		}
-	}, [showCommands, filteredCommands, selectedIndex, selectCommand]);
+			if (e.key === "Enter" && !e.shiftKey && !showCommands) {
+				e.preventDefault();
+				submit();
+			}
+		},
+		[showCommands, filteredCommands, selectedIndex, selectCommand],
+	);
 
 	function submit() {
 		const trimmed = value.trim();
@@ -132,9 +136,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message..." 
 									<span className="agent-slash-key">{cmd}</span>
 									<span className="agent-slash-desc">{desc}</span>
 								</div>
-								{i === selectedIndex && (
-									<span className="agent-slash-enter">Enter</span>
-								)}
+								{i === selectedIndex && <span className="agent-slash-enter">Enter</span>}
 							</button>
 						))}
 					</div>

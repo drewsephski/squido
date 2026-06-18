@@ -3,7 +3,6 @@ import { useAgentWebSocket, type AgentSessionEvent } from "./useAgentWebSocket.t
 import { ChatMessages, type DisplayMessage } from "./ChatMessages.tsx";
 import { ChatInput } from "./ChatInput.tsx";
 import { StatusBar } from "./StatusBar.tsx";
-import { ContextPanel } from "./ContextPanel.tsx";
 import { SessionSidebar } from "./SessionSidebar.tsx";
 import { ConnectScreen } from "./ConnectScreen.tsx";
 import "./agent.css";
@@ -42,35 +41,29 @@ function extractThinking(content: unknown): string[] {
 		.filter(Boolean);
 }
 
-interface ApiModel {
-	provider: string;
-	id: string;
-	name?: string;
-	contextWindow?: number;
-	reasoning?: boolean;
-	input?: string[];
-}
+const THINKING_LEVELS = ["off", "low", "medium", "high"] as const;
 
 export function AgentPage() {
 	const [messages, setMessages] = useState<DisplayMessage[]>([]);
 	const [isStreaming, setIsStreaming] = useState(false);
 	const [sidebarOpen, setSidebarOpen] = useState(true);
-	const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
-	const [availableModels, setAvailableModels] = useState<ApiModel[]>([]);
-	const [modelsLoading, setModelsLoading] = useState(false);
-	const [modelsError, setModelsError] = useState<string | null>(null);
-	const [optimisticModel, setOptimisticModel] = useState<{ provider: string; id: string } | null>(null);
-	const modelsFetchCount = useRef(0);
+	const [thinkingOpen, setThinkingOpen] = useState(false);
+	const thinkingRef = useRef<HTMLDivElement>(null);
 	const streamingMsgId = useRef<string | null>(null);
 	const promptQueueRef = useRef<string[]>([]);
-	const toolCalls = useRef<Map<string, {
-		toolCallId: string;
-		toolName: string;
-		args: Record<string, unknown>;
-		result?: unknown;
-		isRunning: boolean;
-		isError: boolean;
-	}>>(new Map());
+	const toolCalls = useRef<
+		Map<
+			string,
+			{
+				toolCallId: string;
+				toolName: string;
+				args: Record<string, unknown>;
+				result?: unknown;
+				isRunning: boolean;
+				isError: boolean;
+			}
+		>
+	>(new Map());
 
 	const handleEvent = useCallback((event: AgentSessionEvent) => {
 		switch (event.type) {
@@ -91,8 +84,8 @@ export function AgentPage() {
 				if (streamingMsgId.current) {
 					setMessages((prev) =>
 						prev.map((m) =>
-							m.id === streamingMsgId.current ? { ...m, streaming: false } : m
-						)
+							m.id === streamingMsgId.current ? { ...m, streaming: false } : m,
+						),
 					);
 					streamingMsgId.current = null;
 				}
@@ -132,8 +125,8 @@ export function AgentPage() {
 						prev.map((m) =>
 							m.id === id
 								? { ...m, content: extractText(contentBlocks), thinking: extractThinking(contentBlocks) }
-								: m
-						)
+								: m,
+						),
 					);
 				}
 				break;
@@ -147,9 +140,14 @@ export function AgentPage() {
 					setMessages((prev) =>
 						prev.map((m) =>
 							m.id === id
-								? { ...m, content: extractText(contentBlocks), thinking: extractThinking(contentBlocks), streaming: false }
-								: m
-						)
+								? {
+										...m,
+										content: extractText(contentBlocks),
+										thinking: extractThinking(contentBlocks),
+										streaming: false,
+									}
+								: m,
+						),
 					);
 					streamingMsgId.current = null;
 				}
@@ -175,10 +173,8 @@ export function AgentPage() {
 					const tc = toolCalls.current.get(toolCallId)!;
 					setMessages((prev) =>
 						prev.map((m) =>
-							m.id === id
-								? { ...m, toolCalls: [...(m.toolCalls ?? []), tc] }
-								: m
-						)
+							m.id === id ? { ...m, toolCalls: [...(m.toolCalls ?? []), tc] } : m,
+						),
 					);
 				}
 				break;
@@ -200,13 +196,11 @@ export function AgentPage() {
 									? {
 											...m,
 											toolCalls: (m.toolCalls ?? []).map((tc) =>
-												tc.toolCallId === toolCallId
-													? { ...tc, result: partialResult }
-													: tc
+												tc.toolCallId === toolCallId ? { ...tc, result: partialResult } : tc,
 											),
-									  }
-									: m
-							)
+										}
+									: m,
+							),
 						);
 					}
 				}
@@ -234,11 +228,11 @@ export function AgentPage() {
 											toolCalls: (m.toolCalls ?? []).map((tc) =>
 												tc.toolCallId === toolCallId
 													? { ...tc, result, isRunning: false, isError }
-													: tc
+													: tc,
 											),
-									  }
-									: m
-							)
+										}
+									: m,
+							),
 						);
 					}
 				}
@@ -248,7 +242,7 @@ export function AgentPage() {
 	}, []);
 
 	const handleStateChange = useCallback(() => {
-		// State is propagated through the hook's internal state — no extra work needed
+		// State is propagated through the hook's internal state
 	}, []);
 
 	const handleError = useCallback((_message: string) => {}, []);
@@ -261,64 +255,6 @@ export function AgentPage() {
 		onError: handleError,
 	});
 
-	// Fetch available models from REST API (with retry)
-	const fetchModels = useCallback(() => {
-		const attempt = ++modelsFetchCount.current;
-		setModelsLoading(true);
-		setModelsError(null);
-		fetch("/api/models")
-			.then((r) => {
-				if (!r.ok) throw new Error(`HTTP ${r.status}`);
-				return r.json() as Promise<{ models: ApiModel[] }>;
-			})
-			.then((data) => {
-				if (attempt === modelsFetchCount.current) {
-					setAvailableModels(data.models);
-					setModelsError(null);
-				}
-			})
-			.catch((err) => {
-				if (attempt === modelsFetchCount.current) {
-					setAvailableModels([]);
-					setModelsError(err.message);
-					if (modelsFetchCount.current < 3) {
-						setTimeout(fetchModels, 2000);
-					}
-				}
-			})
-			.finally(() => {
-				if (attempt === modelsFetchCount.current) {
-					setModelsLoading(false);
-				}
-			});
-	}, []);
-
-	// Fetch models on mount
-	useEffect(() => {
-		fetchModels();
-	}, [fetchModels]);
-
-	// Re-fetch models on reconnect
-	const prevStatusRef = useRef(status);
-	useEffect(() => {
-		if (prevStatusRef.current !== "connected" && status === "connected") {
-			fetchModels();
-		}
-		prevStatusRef.current = status;
-	}, [status, fetchModels]);
-
-	// Clear optimistic model when server state catches up
-	useEffect(() => {
-		if (
-			optimisticModel &&
-			state?.model &&
-			state.model.provider === optimisticModel.provider &&
-			state.model.id === optimisticModel.id
-		) {
-			setOptimisticModel(null);
-		}
-	}, [state, optimisticModel]);
-
 	// Flush queued prompts once connected
 	useEffect(() => {
 		if (status === "connected" && promptQueueRef.current.length > 0) {
@@ -329,123 +265,142 @@ export function AgentPage() {
 		}
 	}, [status, send]);
 
-	const handleSend = useCallback((text: string) => {
-		const cmd = text.split(" ")[0].toLowerCase();
-		const args = text.slice(cmd.length).trim();
-
-		switch (cmd) {
-			case "/clear":
-				setMessages([]);
-				return;
-
-			case "/model":
-				setRightSidebarOpen(true);
-				return;
-
-			case "/think":
-				if (args && ["off", "low", "medium", "high"].includes(args)) {
-					send({ type: "set_thinking", level: args });
-				} else {
-					const thinkingMsg: DisplayMessage = {
-						id: uid(),
-						role: "assistant",
-						content: "Available thinking levels: off, low, medium, high\n\nUse `/think <level>` to set or click the buttons in the sidebar.",
-					};
-					setMessages((prev) => [...prev, thinkingMsg]);
-				}
-				return;
-
-			case "/session":
-				if (state) {
-					const info = [
-						`**Session:** ${state.sessionName || "Unnamed"}`,
-						`**ID:** ${state.sessionId}`,
-						`**Messages:** ${state.messageCount}`,
-						`**Directory:** ${state.cwd}`,
-						`**Model:** ${state.model?.provider}/${state.model?.id}`,
-						`**Thinking:** ${state.thinkingLevel}`,
-					].join("\n");
-					const infoMsg: DisplayMessage = {
-						id: uid(),
-						role: "assistant",
-						content: info,
-					};
-					setMessages((prev) => [...prev, infoMsg]);
-				}
-				return;
-
-			case "/help": {
-				const helpText = [
-					"## Available Commands\n",
-					"| Command | Description |",
-					"|---------|-------------|",
-					"| `/clear` | Clear chat history |",
-					"| `/model` | Open model picker |",
-					"| `/think <level>` | Set thinking level (off/low/medium/high) |",
-					"| `/session` | Show session information |",
-					"| `/export <path>` | Export session to file |",
-					"| `/changelog` | View version changelog |",
-					"| `/help` | Show this help |",
-					"\nCommands are handled locally in the web UI. Use the sidebar for model and thinking controls.",
-				].join("\n");
-				const helpMsg: DisplayMessage = {
-					id: uid(),
-					role: "assistant",
-					content: helpText,
-				};
-				setMessages((prev) => [...prev, helpMsg]);
-				return;
+	// Close thinking popover on click outside
+	useEffect(() => {
+		if (!thinkingOpen) return;
+		const handler = (e: MouseEvent) => {
+			if (thinkingRef.current && !thinkingRef.current.contains(e.target as Node)) {
+				setThinkingOpen(false);
 			}
+		};
+		document.addEventListener("mousedown", handler);
+		return () => document.removeEventListener("mousedown", handler);
+	}, [thinkingOpen]);
 
-			case "/changelog":
-			case "/export":
-				break;
+	const handleSend = useCallback(
+		(text: string) => {
+			const cmd = text.split(" ")[0].toLowerCase();
+			const args = text.slice(cmd.length).trim();
 
-			default:
-				if (cmd.startsWith("/")) {
-					const unknownMsg: DisplayMessage = {
+			switch (cmd) {
+				case "/clear":
+					setMessages([]);
+					return;
+
+				case "/model": {
+					const hint: DisplayMessage = {
 						id: uid(),
 						role: "assistant",
-						content: `Unknown command: ${cmd}\n\nType \`/help\` to see available commands.`,
+						content:
+							"Run `/model` in your terminal to change the active model. The web UI uses whatever model is configured in the CLI session.",
 					};
-					setMessages((prev) => [...prev, unknownMsg]);
+					setMessages((prev) => [...prev, hint]);
 					return;
 				}
-		}
 
-		const userMsg: DisplayMessage = {
-			id: uid(),
-			role: "user",
-			content: text,
-		};
-		setMessages((prev) => [...prev, userMsg]);
-		send({ type: "prompt", text });
-	}, [send, state]);
+				case "/think":
+					if (args && THINKING_LEVELS.includes(args as (typeof THINKING_LEVELS)[number])) {
+						send({ type: "set_thinking", level: args });
+					} else {
+						const thinkingMsg: DisplayMessage = {
+							id: uid(),
+							role: "assistant",
+							content:
+								"Available thinking levels: `off`, `low`, `medium`, `high`\n\nUse `/think <level>` to set or click the thinking selector in the top bar.",
+						};
+						setMessages((prev) => [...prev, thinkingMsg]);
+					}
+					return;
 
-	const handlePromptClick = useCallback((text: string) => {
-		const userMsg: DisplayMessage = {
-			id: uid(),
-			role: "user",
-			content: text,
-		};
-		setMessages((prev) => [...prev, userMsg]);
+				case "/session":
+					if (state) {
+						const info = [
+							`**Session:** ${state.sessionName || "Unnamed"}`,
+							`**ID:** ${state.sessionId}`,
+							`**Messages:** ${state.messageCount}`,
+							`**Directory:** ${state.cwd}`,
+							`**Model:** ${state.model?.provider}/${state.model?.id}`,
+							`**Thinking:** ${state.thinkingLevel}`,
+						].join("\n");
+						const infoMsg: DisplayMessage = {
+							id: uid(),
+							role: "assistant",
+							content: info,
+						};
+						setMessages((prev) => [...prev, infoMsg]);
+					}
+					return;
 
-		if (status === "connected") {
+				case "/help": {
+					const helpText = [
+						"## Commands\n",
+						"| Command | Description |",
+						"|---------|-------------|",
+						"| `/clear` | Clear chat history |",
+						"| `/model` | Model management hint |",
+						"| `/think <level>` | Set thinking level (off, low, medium, high) |",
+						"| `/session` | Show session details |",
+						"| `/help` | Show this help |",
+						"\nModel and provider management is handled via the CLI. Run `squido --help` in your terminal for full options.",
+					].join("\n");
+					const helpMsg: DisplayMessage = {
+						id: uid(),
+						role: "assistant",
+						content: helpText,
+					};
+					setMessages((prev) => [...prev, helpMsg]);
+					return;
+				}
+
+				default:
+					if (cmd.startsWith("/")) {
+						const unknownMsg: DisplayMessage = {
+							id: uid(),
+							role: "assistant",
+							content: `Unknown command: ${cmd}\n\nType \`/help\` to see available commands.`,
+						};
+						setMessages((prev) => [...prev, unknownMsg]);
+						return;
+					}
+			}
+
+			const userMsg: DisplayMessage = {
+				id: uid(),
+				role: "user",
+				content: text,
+			};
+			setMessages((prev) => [...prev, userMsg]);
 			send({ type: "prompt", text });
-		} else {
-			connect();
-			promptQueueRef.current.push(text);
-		}
-	}, [send, connect, status]);
+		},
+		[send, state],
+	);
 
-	const handleSetThinking = useCallback((level: string) => {
-		send({ type: "set_thinking", level });
-	}, [send]);
+	const handlePromptClick = useCallback(
+		(text: string) => {
+			const userMsg: DisplayMessage = {
+				id: uid(),
+				role: "user",
+				content: text,
+			};
+			setMessages((prev) => [...prev, userMsg]);
 
-	const handleSetModel = useCallback((provider: string, modelId: string) => {
-		send({ type: "set_model", provider, modelId });
-		setOptimisticModel({ provider, id: modelId });
-	}, [send]);
+			if (status === "connected") {
+				send({ type: "prompt", text });
+			} else {
+				connect();
+				promptQueueRef.current.push(text);
+			}
+		},
+		[send, connect, status],
+	);
+
+	const handleSetThinking = useCallback(
+		(level: string) => {
+			send({ type: "set_thinking", level });
+			setThinkingOpen(false);
+		},
+		[send],
+	);
 
 	const handleNewSession = useCallback(() => {
 		if (status !== "connected") {
@@ -458,17 +413,10 @@ export function AgentPage() {
 	}, []);
 
 	const isConnected = status === "connected";
-	const effectiveModel = optimisticModel ?? state?.model ?? null;
+	const currentThinking = state?.thinkingLevel ?? "off";
 
-	// Show connect screen when not connected and no initial state received yet
 	if (!isConnected && !hasInitialState) {
-		return (
-			<ConnectScreen
-				status={status}
-				lastError={lastError}
-				onConnect={connect}
-			/>
-		);
+		return <ConnectScreen status={status} lastError={lastError} onConnect={connect} />;
 	}
 
 	return (
@@ -500,41 +448,43 @@ export function AgentPage() {
 
 				<div className="agent-topbar-center">
 					{isConnected && state?.sessionName && (
-						<span className="agent-topbar-session-name">
-							{state.sessionName}
-						</span>
+						<span className="agent-topbar-session-name">{state.sessionName}</span>
 					)}
 				</div>
 
 				<div className="agent-topbar-right">
-					{isConnected && effectiveModel && (
-						<>
-							<span className="agent-topbar-model-badge">
-								<span className="agent-topbar-model-dot" />
-								{effectiveModel.id}
-							</span>
-							{state?.thinkingLevel && state.thinkingLevel !== "off" && (
-								<span className="agent-topbar-think-badge">{state.thinkingLevel}</span>
+					{isConnected && (
+						<div ref={thinkingRef} className="agent-thinking-topbar">
+							<button
+								onClick={() => setThinkingOpen(!thinkingOpen)}
+								className={`agent-thinking-current${thinkingOpen ? " open" : ""}`}
+							>
+								think: {currentThinking}
+								<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+									<polyline points="6 9 12 15 18 9" />
+								</svg>
+							</button>
+							{thinkingOpen && (
+								<div className="agent-thinking-popover">
+									{THINKING_LEVELS.map((level) => (
+										<button
+											key={level}
+											onClick={() => handleSetThinking(level)}
+											className={`agent-thinking-option${currentThinking === level ? " active" : ""}`}
+										>
+											{level}
+										</button>
+									))}
+								</div>
 							)}
-						</>
+						</div>
 					)}
-					<button
-						onClick={() => setRightSidebarOpen(!rightSidebarOpen)}
-						className="agent-panel-toggle"
-						aria-label={rightSidebarOpen ? "Close context panel" : "Open context panel"}
-					>
-						{rightSidebarOpen ? (
-							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-								<line x1="6" y1="3" x2="6" y2="21" />
-								<polyline points="11 9 15 12 11 15" />
-							</svg>
-						) : (
-							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-								<line x1="18" y1="3" x2="18" y2="21" />
-								<polyline points="13 15 9 12 13 9" />
-							</svg>
-						)}
-					</button>
+
+					{isConnected && state?.model && (
+						<span className="agent-topbar-model-hint" title={`${state.model.provider}/${state.model.id} — use /model in terminal to change`}>
+							{state.model.id}
+						</span>
+					)}
 				</div>
 			</div>
 
@@ -562,24 +512,13 @@ export function AgentPage() {
 						disabled={status !== "connected" || isStreaming}
 						placeholder={
 							status === "connected"
-								? isStreaming ? "Waiting for agent..." : "Ask Squido to do something..."
-								: status === "connecting" ? "Connecting..."
-								: "Connect to start..."
+								? isStreaming
+									? "Waiting for agent..."
+									: "Ask Squido to do something..."
+								: status === "connecting"
+									? "Connecting..."
+									: "Connect to start..."
 						}
-					/>
-				</div>
-
-				{/* Right sidebar — Context */}
-				<div className={`agent-context${rightSidebarOpen ? "" : " collapsed"}`}>
-					<ContextPanel
-						status={status}
-						state={state}
-						onSetThinking={handleSetThinking}
-						onSetModel={handleSetModel}
-						effectiveModel={effectiveModel}
-						availableModels={availableModels}
-						modelsLoading={modelsLoading}
-						modelsError={modelsError}
 					/>
 				</div>
 			</div>
