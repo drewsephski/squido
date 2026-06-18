@@ -271,17 +271,18 @@ export class WebSessionBridge {
 			this.sendError("New session creation is not available in this mode");
 			return;
 		}
-		const result = await this.runtime.newSession({
-			withSession: async () => {
-				this.sendHistory();
-				this.sendState();
-			},
-		});
+		const result = await this.runtime.newSession();
 		if (result.cancelled) {
 			this.sendError("New session was cancelled");
 			return;
 		}
+		// Mirror the TUI pattern: newSession() with no options, then update UI after.
+		// The withSession callback runs inside finishSessionReplacement which can fire
+		// before the runtime is fully stabilized. Sending updates after newSession()
+		// returns is the same pattern the TUI's handleClearCommand uses.
 		this.session.sessionManager.flush();
+		this.sendHistory();
+		this.sendState();
 		this.sendSessionList();
 	}
 
