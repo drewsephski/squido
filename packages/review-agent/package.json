@@ -1,6 +1,6 @@
 {
 	"name": "@drewsepsi/review-agent",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"description": "AI-powered pull request review agent for GitHub Actions",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -23,7 +23,7 @@
 		"prepublishOnly": "npm run clean && npm run build"
 	},
 	"dependencies": {
-		"@drewsepsi/squido-ai": "^0.2.0",
+		"@drewsepsi/squido-ai": "^0.2.1",
 		"@octokit/rest": "21.1.1",
 		"typebox": "1.1.38",
 		"yaml": "2.9.0"

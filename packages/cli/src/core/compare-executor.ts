@@ -45,7 +45,7 @@ export async function compareModels(
 	models: ResolvedCompareModel[],
 	options: CompareOptions,
 ): Promise<ComparisonResult> {
-	const { prompt, images, signal, onProgress } = options;
+	const { prompt, images, onProgress } = options;
 	const results: ComparisonModelResult[] = [];
 	const timestamp = new Date().toISOString();
 

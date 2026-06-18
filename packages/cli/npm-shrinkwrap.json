@@ -1,17 +1,17 @@
 {
 	"name": "@drewsepsi/squido-cli",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"lockfileVersion": 3,
 	"requires": true,
 	"packages": {
 		"": {
 			"name": "@drewsepsi/squido-cli",
-			"version": "0.2.0",
+			"version": "0.2.1",
 			"license": "MIT",
 			"dependencies": {
-				"@drewsepsi/squido-agent-core": "^0.2.0",
-				"@drewsepsi/squido-ai": "^0.2.0",
-				"@drewsepsi/squido-tui": "^0.2.0",
+				"@drewsepsi/squido-agent-core": "^0.2.1",
+				"@drewsepsi/squido-ai": "^0.2.1",
+				"@drewsepsi/squido-tui": "^0.2.1",
 				"@silvia-odwyer/photon-node": "0.3.4",
 				"chalk": "5.6.2",
 				"cross-spawn": "7.0.6",
@@ -518,11 +518,11 @@
 			}
 		},
 		"node_modules/@drewsepsi/squido-agent-core": {
-			"version": "0.2.0",
-			"resolved": "https://registry.npmjs.org/@drewsepsi/squido-agent-core/-/squido-agent-core-0.2.0.tgz",
+			"version": "0.2.1",
+			"resolved": "https://registry.npmjs.org/@drewsepsi/squido-agent-core/-/squido-agent-core-0.2.1.tgz",
 			"license": "MIT",
 			"dependencies": {
-				"@drewsepsi/squido-ai": "^0.2.0",
+				"@drewsepsi/squido-ai": "^0.2.1",
 				"ignore": "7.0.5",
 				"typebox": "1.1.38",
 				"yaml": "2.9.0"
@@ -532,8 +532,8 @@
 			}
 		},
 		"node_modules/@drewsepsi/squido-ai": {
-			"version": "0.2.0",
-			"resolved": "https://registry.npmjs.org/@drewsepsi/squido-ai/-/squido-ai-0.2.0.tgz",
+			"version": "0.2.1",
+			"resolved": "https://registry.npmjs.org/@drewsepsi/squido-ai/-/squido-ai-0.2.1.tgz",
 			"license": "MIT",
 			"dependencies": {
 				"@anthropic-ai/sdk": "0.91.1",
@@ -555,15 +555,15 @@
 			}
 		},
 		"node_modules/@drewsepsi/squido-cloud": {
-			"version": "0.2.0",
-			"resolved": "https://registry.npmjs.org/@drewsepsi/squido-cloud/-/squido-cloud-0.2.0.tgz",
+			"version": "0.2.1",
+			"resolved": "https://registry.npmjs.org/@drewsepsi/squido-cloud/-/squido-cloud-0.2.1.tgz",
 			"dependencies": {
-				"@drewsepsi/squido-agent-core": "^0.2.0"
+				"@drewsepsi/squido-agent-core": "^0.2.1"
 			}
 		},
 		"node_modules/@drewsepsi/squido-tui": {
-			"version": "0.2.0",
-			"resolved": "https://registry.npmjs.org/@drewsepsi/squido-tui/-/squido-tui-0.2.0.tgz",
+			"version": "0.2.1",
+			"resolved": "https://registry.npmjs.org/@drewsepsi/squido-tui/-/squido-tui-0.2.1.tgz",
 			"license": "MIT",
 			"dependencies": {
 				"get-east-asian-width": "1.6.0",

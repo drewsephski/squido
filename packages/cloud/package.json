@@ -1,6 +1,6 @@
 {
 	"name": "@drewsepsi/squido-cloud",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"description": "Squido Cloud client — session sync, auth, and API integration",
 	"private": true,
 	"type": "module",
@@ -21,7 +21,7 @@
 		"prepublishOnly": "npm run clean && npm run build"
 	},
 	"dependencies": {
-		"@drewsepsi/squido-agent-core": "^0.2.0"
+		"@drewsepsi/squido-agent-core": "^0.2.1"
 	},
 	"devDependencies": {
 		"shx": "0.4.0",
