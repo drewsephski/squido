@@ -8,6 +8,8 @@ import sessionRoutes from "./routes/sessions.ts";
 import searchRoutes from "./routes/search.ts";
 import sharingRoutes, { publicShareRoutes } from "./routes/sharing.ts";
 import accountRoutes from "./routes/account.ts";
+import githubRoutes from "./routes/github.ts";
+import reviewRoutes from "./routes/reviews.ts";
 
 export interface Env {
 	DB: D1Database;
@@ -15,6 +17,7 @@ export interface Env {
 	JWT_SECRET: string;
 	GITHUB_CLIENT_ID: string;
 	GITHUB_CLIENT_SECRET: string;
+	GITHUB_TOKEN_ENCRYPTION_KEY: string;
 	STRIPE_SECRET_KEY: string;
 	STRIPE_WEBHOOK_SECRET: string;
 	DASHBOARD_URL: string;
@@ -31,6 +34,8 @@ app.use(
 			"https://app.squidagent.app",
 			"https://squidagent.app",
 			"http://localhost:5173",
+			"http://localhost:9876",
+			"http://127.0.0.1:9876",
 		],
 	}),
 );
@@ -54,12 +59,16 @@ app.use("/v1/sessions/*", authMiddleware);
 app.use("/v1/search", authMiddleware);
 app.use("/v1/search/*", authMiddleware);
 app.use("/v1/account/*", authMiddleware);
+app.use("/v1/github/*", authMiddleware);
+app.use("/v1/review/*", authMiddleware);
 
 // Mount protected routes
 app.route("/v1/sessions", sessionRoutes);
 app.route("/v1/search", searchRoutes);
 app.route("/v1/sharing", sharingRoutes);
 app.route("/v1/account", accountRoutes);
+app.route("/v1/github", githubRoutes);
+app.route("/v1/review", reviewRoutes);
 
 // Public share routes — NO auth middleware
 app.route("/v1/share", publicShareRoutes);

@@ -33,6 +33,7 @@
 		"prepublishOnly": "npm run clean && npm run build && npm run shrinkwrap"
 	},
 	"dependencies": {
+		"@drewsepsi/review-agent": "^0.2.1",
 		"@drewsepsi/squido-agent-core": "^0.2.1",
 		"@drewsepsi/squido-ai": "^0.2.1",
 		"@drewsepsi/squido-tui": "^0.2.1",

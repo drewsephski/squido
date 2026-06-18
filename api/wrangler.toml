@@ -23,6 +23,14 @@ bucket_name = "squido-sessions"
 DASHBOARD_URL = "https://app.squidagent.app"
 API_URL = "https://api.squidagent.app"
 
+# Secrets (set via `wrangler secret put`):
+# - JWT_SECRET: HMAC key for JWT signing
+# - GITHUB_CLIENT_ID: GitHub OAuth App client ID
+# - GITHUB_CLIENT_SECRET: GitHub OAuth App client secret
+# - GITHUB_TOKEN_ENCRYPTION_KEY: 256-bit hex key for AES-GCM encryption of stored GitHub tokens
+# - STRIPE_SECRET_KEY: Stripe API key
+# - STRIPE_WEBHOOK_SECRET: Stripe webhook signing secret
+
 # ── Production Environment ───────────────────────────────────────────
 [env.production]
 vars = { DASHBOARD_URL = "https://app.squidagent.app", API_URL = "https://api.squidagent.app" }

@@ -12,6 +12,7 @@ import type { WebSocket } from "ws";
 import { AgentSession } from "../../core/agent-session.ts";
 import type { AgentSessionRuntime } from "../../core/agent-session-runtime.ts";
 import { resolvePath } from "../../utils/paths.ts";
+import type { ReviewBridge } from "./review-bridge.ts";
 import type { WebClientMessage, WebServerMessage, WebSessionMessage, WebSessionState } from "./web-types.ts";
 
 type SessionListFn = () => Promise<
@@ -78,6 +79,7 @@ export class WebSessionBridge {
 	private unsubscribe: (() => void) | null = null;
 	private closed = false;
 	private listSessions: SessionListFn | null;
+	private reviewBridge: ReviewBridge | null;
 	private _unbindRebind: (() => void) | null = null;
 
 	constructor(ws: WebSocket, session: AgentSession);
@@ -85,6 +87,7 @@ export class WebSessionBridge {
 	constructor(ws: WebSocket, sessionOrRuntime: AgentSession | AgentSessionRuntime, listSessions?: SessionListFn) {
 		this.ws = ws;
 		this.listSessions = listSessions ?? null;
+		this.reviewBridge = null;
 
 		if (sessionOrRuntime instanceof AgentSession) {
 			// Legacy mode: just an AgentSession, no runtime for switching
@@ -156,6 +159,7 @@ export class WebSessionBridge {
 	detach(): void {
 		if (this.closed) return;
 		this.closed = true;
+		this.reviewBridge?.detach();
 		if (this.unsubscribe) {
 			this.unsubscribe();
 			this.unsubscribe = null;
@@ -171,7 +175,18 @@ export class WebSessionBridge {
 		}
 	}
 
+	/** Set the review bridge for handling review-specific messages. */
+	setReviewBridge(bridge: ReviewBridge): void {
+		this.reviewBridge = bridge;
+	}
+
 	private async handleMessage(message: WebClientMessage): Promise<void> {
+		// Delegate review messages to ReviewBridge
+		if (this.reviewBridge && !this.reviewBridge.isClosed) {
+			const handled = await this.reviewBridge.handleMessage(message);
+			if (handled) return;
+		}
+
 		try {
 			switch (message.type) {
 				case "prompt":

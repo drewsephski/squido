@@ -9,6 +9,7 @@ import type { AddressInfo } from "node:net";
 import type { AgentSessionRuntime } from "../../core/agent-session-runtime.ts";
 import { SessionManager } from "../../core/session-manager.ts";
 import { openBrowser } from "../../utils/open-browser.ts";
+import { ReviewBridge } from "./review-bridge.ts";
 import { createWebServer } from "./web-server.ts";
 import { WebSessionBridge } from "./web-session-bridge.ts";
 import type { WebServerOptions } from "./web-types.ts";
@@ -18,10 +19,12 @@ export interface WebModeOptions {
 	port?: number;
 	host?: string;
 	openBrowser?: boolean;
+	cloudApiUrl?: string;
 }
 
 const DEFAULT_PORT = 9876;
 const DEFAULT_HOST = "127.0.0.1";
+const DEFAULT_CLOUD_API_URL = "https://api.squidagent.app";
 
 /**
  * Run in web mode: start an HTTP+WS server and bridge the agent session.
@@ -31,6 +34,7 @@ export async function runWebMode(runtime: AgentSessionRuntime, options: WebModeO
 	const host = options.host ?? DEFAULT_HOST;
 	const staticDir = options.staticDir ?? "";
 	const shouldOpenBrowser = options.openBrowser ?? true;
+	const cloudApiUrl = options.cloudApiUrl ?? DEFAULT_CLOUD_API_URL;
 
 	const serverOptions: WebServerOptions = {
 		host,
@@ -59,6 +63,7 @@ export async function runWebMode(runtime: AgentSessionRuntime, options: WebModeO
 	// Bridge new WebSocket connections to the agent session
 	wsServer.on("connection", (ws) => {
 		const bridge = new WebSessionBridge(ws, runtime, serverOptions.listSessions!);
+		bridge.setReviewBridge(new ReviewBridge(ws, { cloudApiUrl }));
 		bridge.attach();
 	});
 

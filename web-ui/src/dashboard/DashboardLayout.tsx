@@ -10,6 +10,7 @@ export function DashboardLayout() {
 	const navItems = [
 		{ to: "/agent", label: "Agent", end: true },
 		{ to: "/dashboard", label: "Sessions", end: true },
+		{ to: "/dashboard/review-agents", label: "Review Agents" },
 		{ to: "/dashboard/settings", label: "Settings" },
 		{ to: "/dashboard/billing", label: "Billing" },
 	];

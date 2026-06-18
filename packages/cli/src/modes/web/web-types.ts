@@ -26,7 +26,19 @@ export type WebClientMessage =
 	| { type: "load_session"; sessionPath: string }
 	| { type: "new_session" }
 	| { type: "rename_session"; name: string }
-	| { type: "delete_session"; sessionPath: string };
+	| { type: "delete_session"; sessionPath: string }
+	// Review commands
+	| {
+			type: "run_review";
+			jwt: string;
+			agentId: string;
+			repository: string;
+			prNumber: number;
+			model?: string;
+			provider?: string;
+	  }
+	| { type: "list_review_agents"; jwt: string }
+	| { type: "list_review_runs"; jwt: string; agentId: string };
 
 // ============================================================================
 // Server -> Client messages
@@ -78,7 +90,42 @@ export type WebServerMessage =
 	| { type: "event"; event: AgentSessionEvent }
 	| { type: "session_list"; sessions: WebSessionInfo[] }
 	| { type: "session_history"; messages: WebSessionMessage[] }
-	| { type: "session_renamed"; name: string };
+	| { type: "session_renamed"; name: string }
+	// Review messages
+	| { type: "review_progress"; phase: string; message: string }
+	| { type: "review_complete"; summary: string | null; findingCount: number; tokensUsed: number; reviewUrl?: string }
+	| { type: "review_error"; message: string }
+	| { type: "review_agents"; agents: WebReviewAgent[] }
+	| { type: "review_runs"; runs: WebReviewRun[] };
+
+// ============================================================================
+// Review types
+// ============================================================================
+
+export interface WebReviewAgent {
+	id: string;
+	name: string;
+	repository: string;
+	model: string;
+	provider: string;
+	enabled: boolean;
+	configPath: string | null;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface WebReviewRun {
+	id: string;
+	agentId: string;
+	repository: string;
+	prNumber: number;
+	status: string;
+	summary: string | null;
+	findingCount: number;
+	tokensUsed: number;
+	startedAt: string;
+	completedAt: string | null;
+}
 
 // ============================================================================
 // Server options

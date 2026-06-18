@@ -31,6 +31,9 @@
 	/* Glow — static, not animated */
 	--glow-primary: rgb(242 154 58 / 0.06);
 	--glow-accent: rgb(61 139 139 / 0.04);
+	--glow-drift: rgb(242 154 58 / 0.02);
+	--radius-xl: 16px;
+	--shadow-glow: 0 0 24px rgb(242 154 58 / 0.06);
 
 	/* Typography */
 	--font-display: "Syne", system-ui, sans-serif;
@@ -208,11 +211,81 @@ pre code {
 	50% { opacity: 0.3; }
 }
 
+/* ========== Staggered Entrance ========== */
+@keyframes fade-slide-up {
+	from {
+		opacity: 0;
+		transform: translateY(16px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes terminal-float {
+	0%, 100% { transform: translateY(0); }
+	50% { transform: translateY(-5px); }
+}
+
+@keyframes aurora-drift {
+	0% { transform: translate(0, 0) scale(1); }
+	25% { transform: translate(1.5%, -0.8%) scale(1.01); }
+	50% { transform: translate(1%, 1.2%) scale(0.99); }
+	75% { transform: translate(-0.8%, 0.5%) scale(1.005); }
+	100% { transform: translate(0, 0) scale(1); }
+}
+
+@keyframes aurora-drift-alt {
+	0% { transform: translate(0, 0) scale(1); }
+	25% { transform: translate(-1%, 0.5%) scale(1.02); }
+	50% { transform: translate(-1.5%, -0.5%) scale(0.98); }
+	75% { transform: translate(1%, -0.3%) scale(1.01); }
+	100% { transform: translate(0, 0) scale(1); }
+}
+
+@keyframes terminal-glow {
+	0%, 100% {
+		box-shadow:
+			var(--shadow-lg),
+			0 0 40px rgb(242 154 58 / 0.03);
+	}
+	50% {
+		box-shadow:
+			var(--shadow-lg),
+			0 0 70px rgb(242 154 58 / 0.06);
+	}
+}
+
+.animate-in {
+	opacity: 0;
+	animation: fade-slide-up 0.8s var(--ease-out) forwards;
+}
+
+.delay-1 { animation-delay: 0.1s; }
+.delay-2 { animation-delay: 0.25s; }
+.delay-3 { animation-delay: 0.4s; }
+.delay-4 { animation-delay: 0.55s; }
+.delay-5 { animation-delay: 0.7s; }
+.delay-6 { animation-delay: 0.85s; }
+
+/* ========== Section Anchors ========== */
+#features,
+#workflows,
+#install {
+	scroll-margin-top: 80px;
+}
+
 @media (prefers-reduced-motion: reduce) {
 	.reveal {
 		opacity: 1;
 		transform: none;
 		transition: none;
+	}
+
+	.animate-in {
+		opacity: 1;
+		animation: none;
 	}
 
 	html {

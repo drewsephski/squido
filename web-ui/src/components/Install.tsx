@@ -1,16 +1,36 @@
-import { useState } from "react";
-import { useReveal } from "../hooks/useReveal.ts";
+import { useState, useEffect } from "react"
+import { useReveal } from "../hooks/useReveal.ts"
 
-const INSTALL_CMD = "npm install -g @drewsepsi/squido-cli";
+const INSTALL_CMD = "npm install -g @drewsepsi/squido-cli"
+
+function detectOS(): string {
+	if (typeof navigator === "undefined") return "linux"
+	const p = navigator.platform.toLowerCase()
+	if (p.includes("mac")) return "macos"
+	if (p.includes("win")) return "windows"
+	return "linux"
+}
+
+const OS_LABEL: Record<string, string> = {
+	macos: "macOS",
+	windows: "Windows",
+	linux: "Linux",
+}
 
 export function Install() {
-	const ref = useReveal<HTMLDivElement>();
-	const [copied, setCopied] = useState(false);
+	const ref = useReveal<HTMLDivElement>()
+	const [copied, setCopied] = useState(false)
+	const [os] = useState(detectOS)
+
+	useEffect(() => {
+		if (!copied) return
+		const t = setTimeout(() => setCopied(false), 2000)
+		return () => clearTimeout(t)
+	}, [copied])
 
 	async function handleCopy() {
-		await navigator.clipboard.writeText(INSTALL_CMD);
-		setCopied(true);
-		setTimeout(() => setCopied(false), 2000);
+		await navigator.clipboard.writeText(INSTALL_CMD)
+		setCopied(true)
 	}
 
 	return (
@@ -27,14 +47,46 @@ export function Install() {
 					</p>
 					<div className="install-code-block">
 						<div className="install-code-header">
-							<span className="install-code-label">Terminal</span>
+							<span className="install-code-label">
+								Terminal
+								<span className="install-os-badge">{OS_LABEL[os] ?? "Linux"}</span>
+							</span>
 							<button
 								type="button"
-								className="install-copy-btn"
+								className={`install-copy-btn${copied ? " copied" : ""}`}
 								onClick={handleCopy}
 								aria-live="polite"
 							>
-								{copied ? "Copied" : "Copy"}
+								<span className="install-copy-icon" aria-hidden="true">
+									<svg
+										className="install-copy-svg"
+										width="14"
+										height="14"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										strokeWidth="2"
+										strokeLinecap="round"
+										strokeLinejoin="round"
+									>
+										<rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+										<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+									</svg>
+									<svg
+										className="install-check-svg"
+										width="14"
+										height="14"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										strokeWidth="2.5"
+										strokeLinecap="round"
+										strokeLinejoin="round"
+									>
+										<polyline points="20 6 9 17 4 12" />
+									</svg>
+								</span>
+								<span className="install-copy-text">{copied ? "Copied" : "Copy"}</span>
 							</button>
 						</div>
 						<pre className="install-code">
@@ -65,5 +117,5 @@ export function Install() {
 				</div>
 			</div>
 		</section>
-	);
+	)
 }

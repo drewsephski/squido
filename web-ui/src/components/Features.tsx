@@ -1,11 +1,11 @@
-import { useReveal } from "../hooks/useReveal.ts";
+import { useReveal } from "../hooks/useReveal.ts"
 
 type Tool = {
-	name: string;
-	description: string;
-	detail: string;
-	extra?: string;
-};
+	name: string
+	description: string
+	detail: string
+	extra?: string
+}
 
 const tools: Tool[] = [
 	{
@@ -34,17 +34,22 @@ const tools: Tool[] = [
 			"Sessions keep your full agent context — every tool call, file read, and model turn — so you can pause mid-task and pick up exactly where you left off.",
 		detail: "/export · /resume · /share",
 	},
-];
+]
+
+const GLYPHS = ["\u2502", "\u2502", "\u2502", "\u2502", "\u2502"]
 
 function ToolCard({ tool, index }: { tool: Tool; index: number }) {
-	const ref = useReveal<HTMLLIElement>();
-	const isSession = tool.name === "session";
+	const ref = useReveal<HTMLLIElement>()
+	const isSession = tool.name === "session"
 	return (
 		<li
 			ref={ref}
 			className={`tool-card reveal reveal-delay-${Math.min(index, 4)}${isSession ? " tool-card-session" : ""}`}
 		>
 			<div className="tool-card-header">
+				<span className="tool-card-index" aria-hidden="true">
+					{GLYPHS[index]}
+				</span>
 				<code className="tool-card-name">{tool.name}</code>
 			</div>
 			<p className="tool-card-desc">{tool.description}</p>
@@ -52,11 +57,11 @@ function ToolCard({ tool, index }: { tool: Tool; index: number }) {
 				<code>{tool.detail}</code>
 			</div>
 		</li>
-	);
+	)
 }
 
 export function Features() {
-	const headerRef = useReveal<HTMLDivElement>();
+	const headerRef = useReveal<HTMLDivElement>()
 
 	return (
 		<section id="features" className="section features">
@@ -78,5 +83,5 @@ export function Features() {
 				</ul>
 			</div>
 		</section>
-	);
+	)
 }

@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import { authMiddleware, createToken } from "../middleware/auth.ts";
 import type { AuthUser } from "../middleware/auth.ts";
 import type { Env } from "../index.ts";
+import { encryptToken } from "../utils/crypto.ts";
 
 const authRoutes = new Hono<{ Bindings: Env }>();
 
@@ -16,7 +17,7 @@ authRoutes.post("/github/start", async (c) => {
 		},
 		body: JSON.stringify({
 			client_id: c.env.GITHUB_CLIENT_ID,
-			scope: "read:user user:email",
+			scope: "read:user user:email public_repo",
 		}),
 	});
 
@@ -131,6 +132,9 @@ authRoutes.post("/github/callback", async (c) => {
 	// Upsert user in D1
 	const user = await ensureUser(c.env.DB, ghUser);
 
+	// Store encrypted GitHub token for review agent access
+	await storeGitHubToken(c.env.DB, user.id, accessToken, c.env);
+
 	// Issue JWT
 	const authUser: AuthUser = {
 		userId: user.id,
@@ -179,7 +183,7 @@ authRoutes.get("/me", authMiddleware, async (c) => {
 authRoutes.post("/github/web/start", async (c) => {
 	const clientId = c.env.GITHUB_CLIENT_ID;
 	const redirectUri = `${c.env.DASHBOARD_URL}/dashboard/auth/callback`;
-	const scope = "read:user user:email";
+	const scope = "read:user user:email public_repo";
 
 	// Generate CSRF state parameter and store it
 	const state = crypto.randomUUID();
@@ -255,6 +259,9 @@ authRoutes.post("/github/web/callback", async (c) => {
 	// Get GitHub user info
 	const ghUser = await getGitHubUser(tokenData.access_token);
 	const user = await ensureUser(c.env.DB, ghUser);
+
+	// Store encrypted GitHub token for review agent access
+	await storeGitHubToken(c.env.DB, user.id, tokenData.access_token, c.env);
 
 	// Issue JWT
 	const authUser: AuthUser = {
@@ -376,6 +383,21 @@ async function ensureUser(db: D1Database, ghUser: GitHubUser): Promise<DbUser> {
 	}
 
 	return user;
+}
+
+/**
+ * Encrypt and store the GitHub access token in the users table.
+ * Used by both device flow and web flow callbacks.
+ */
+async function storeGitHubToken(db: D1Database, userId: string, githubToken: string, env: Env): Promise<void> {
+	try {
+		const encrypted = await encryptToken(githubToken, env);
+		await db.prepare("UPDATE users SET github_access_token_encrypted = ?1, updated_at = datetime('now') WHERE id = ?2")
+			.bind(encrypted, userId)
+			.run();
+	} catch (err) {
+		console.error("Failed to store encrypted GitHub token:", err);
+	}
 }
 
 export default authRoutes;

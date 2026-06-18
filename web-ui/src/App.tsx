@@ -2,6 +2,7 @@ import { Routes, Route } from "react-router-dom";
 import { Header } from "./components/Header.tsx";
 import { Hero } from "./components/Hero.tsx";
 import { Features } from "./components/Features.tsx";
+import { Workflows } from "./components/Workflows.tsx";
 import { Install } from "./components/Install.tsx";
 import { Footer } from "./components/Footer.tsx";
 import { DocsLayout } from "./components/docs/DocsLayout.tsx";
@@ -15,8 +16,10 @@ import {
 	OAuthCallback,
 	ShareView,
 	GistSessionView,
+	ReviewAgents,
 } from "./dashboard/index.ts";
 import { AgentPage } from "./agent/index.ts";
+import { ReviewPage } from "./review/ReviewPage.tsx";
 import "./components/components.css";
 
 function Landing() {
@@ -26,6 +29,7 @@ function Landing() {
 			<main>
 				<Hero />
 				<Features />
+				<Workflows />
 				<Install />
 			</main>
 			<Footer />
@@ -42,6 +46,9 @@ export function App() {
 
 				{/* Agent chat (no auth — connects to local Squido server) */}
 				<Route path="/agent" element={<AgentPage />} />
+
+				{/* Review execution (no auth — connects via WS with cloud JWT) */}
+				<Route path="/review" element={<ReviewPage />} />
 
 				{/* Public: shared session views (no auth) */}
 				<Route path="/share/:token" element={<ShareView />} />
@@ -62,6 +69,7 @@ export function App() {
 				>
 					<Route index element={<SessionList />} />
 					<Route path="session/:id" element={<SessionDetail />} />
+					<Route path="review-agents" element={<ReviewAgents />} />
 					<Route path="settings" element={<div>Settings (coming soon)</div>} />
 					<Route path="billing" element={<div>Billing (coming soon)</div>} />
 				</Route>

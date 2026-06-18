@@ -183,3 +183,202 @@ export async function getSharedSession(
 	}
 	return res.json() as Promise<ShareResponse>;
 }
+
+// ---- Review Agents ----
+
+export interface ReviewAgent {
+	id: string;
+	name: string;
+	repository: string;
+	model: string;
+	provider: string;
+	enabled: boolean;
+	configPath: string | null;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface ReviewRun {
+	id: string;
+	agentId: string;
+	repository: string;
+	prNumber: number;
+	status: string;
+	summary: string | null;
+	findingCount: number;
+	tokensUsed: number;
+	startedAt: string;
+	completedAt: string | null;
+}
+
+export async function getReviewAgents(): Promise<ReviewAgent[]> {
+	const res = await apiFetch("/review/agents");
+	const data = await res.json() as { agents: ReviewAgent[] };
+	return data.agents;
+}
+
+export async function createReviewAgent(params: {
+	name: string;
+	repository: string;
+	model?: string;
+	provider?: string;
+}): Promise<ReviewAgent> {
+	const res = await apiFetch("/review/agents", {
+		method: "POST",
+		body: JSON.stringify(params),
+	});
+	return res.json() as Promise<ReviewAgent>;
+}
+
+export async function deleteReviewAgent(id: string): Promise<void> {
+	await apiFetch(`/review/agents/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+export async function getReviewRuns(agentId: string): Promise<ReviewRun[]> {
+	const res = await apiFetch(`/review/agents/${encodeURIComponent(agentId)}/runs`);
+	const data = await res.json() as { runs: ReviewRun[] };
+	return data.runs;
+}
+
+// ---- GitHub Repos & PRs ----
+
+export interface GitHubRepo {
+	id: number;
+	fullName: string;
+	name: string;
+	owner: string;
+	private: boolean;
+	defaultBranch: string;
+	updatedAt: string;
+	htmlUrl: string;
+}
+
+export interface GitHubPull {
+	id: number;
+	number: number;
+	title: string;
+	state: string;
+	headSha: string;
+	headRef: string;
+	baseRef: string;
+	author: string;
+	updatedAt: string;
+	htmlUrl: string;
+	draft: boolean;
+}
+
+export async function getGitHubRepos(): Promise<GitHubRepo[]> {
+	const res = await apiFetch("/github/repos");
+	const data = await res.json() as { repos: GitHubRepo[] };
+	return data.repos;
+}
+
+export async function getPullRequests(
+	owner: string,
+	repo: string,
+): Promise<GitHubPull[]> {
+	const res = await apiFetch(`/github/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls`);
+	const data = await res.json() as { pulls: GitHubPull[] };
+	return data.pulls;
+}
+
+// ---- PR Management ----
+
+export interface PullRequestDetail {
+	number: number;
+	title: string;
+	body: string | null;
+	state: string;
+	draft: boolean;
+	merged: boolean;
+	mergeable: boolean | null;
+	mergeableState: string;
+	headSha: string;
+	headRef: string;
+	headLabel: string;
+	baseRef: string;
+	baseLabel: string;
+	author: string;
+	authorAvatar: string;
+	updatedAt: string;
+	createdAt: string;
+	htmlUrl: string;
+	commentCount: number;
+	commitCount: number;
+	additions: number;
+	deletions: number;
+	changedFiles: number;
+}
+
+export interface PullRequestReview {
+	id: number;
+	user: string;
+	avatar: string;
+	body: string | null;
+	state: string;
+	submittedAt: string;
+	htmlUrl: string;
+}
+
+export interface CheckRun {
+	name: string;
+	status: string;
+	conclusion: string | null;
+	htmlUrl: string;
+	app: { name: string } | null;
+}
+
+export async function getPullRequestDetail(
+	owner: string,
+	repo: string,
+	prNumber: number,
+): Promise<PullRequestDetail> {
+	const res = await apiFetch(`/github/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}`);
+	return res.json() as Promise<PullRequestDetail>;
+}
+
+export async function mergePullRequest(
+	owner: string,
+	repo: string,
+	prNumber: number,
+	options?: { commitTitle?: string; commitMessage?: string; mergeMethod?: "merge" | "squash" | "rebase" },
+): Promise<{ merged: boolean; message: string; sha?: string }> {
+	const res = await apiFetch(`/github/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/merge`, {
+		method: "PUT",
+		body: JSON.stringify(options ?? {}),
+	});
+	return res.json() as Promise<{ merged: boolean; message: string; sha?: string }>;
+}
+
+export async function updatePullRequestState(
+	owner: string,
+	repo: string,
+	prNumber: number,
+	state: "open" | "closed",
+): Promise<{ number: number; state: string; title: string; htmlUrl: string }> {
+	const res = await apiFetch(`/github/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}`, {
+		method: "PATCH",
+		body: JSON.stringify({ state }),
+	});
+	return res.json() as Promise<{ number: number; state: string; title: string; htmlUrl: string }>;
+}
+
+export async function getPullRequestReviews(
+	owner: string,
+	repo: string,
+	prNumber: number,
+): Promise<PullRequestReview[]> {
+	const res = await apiFetch(`/github/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/reviews`);
+	const data = await res.json() as { reviews: PullRequestReview[] };
+	return data.reviews;
+}
+
+export async function getCommitChecks(
+	owner: string,
+	repo: string,
+	sha: string,
+): Promise<CheckRun[]> {
+	const res = await apiFetch(`/github/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/commits/${sha}/checks`);
+	const data = await res.json() as { checks: CheckRun[] };
+	return data.checks;
+}

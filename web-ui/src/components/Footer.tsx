@@ -1,4 +1,4 @@
-import { Logo } from "./Logo.tsx";
+import { Logo } from "./Logo.tsx"
 
 export function Footer() {
 	return (
@@ -14,24 +14,49 @@ export function Footer() {
 							</p>
 						</div>
 					</div>
-					<nav className="footer-links" aria-label="Footer">
+					<div className="footer-nav-group">
+						<div className="footer-nav-col">
+					<span className="footer-nav-label">Product</span>
 						<a href="#features">Tools</a>
+						<a href="#workflows">Workflows</a>
 						<a href="#install">Install</a>
-						<a
-							href="https://github.com/drewsephski/squido"
-							target="_blank"
-							rel="noopener noreferrer"
-						>
-							GitHub
-						</a>
-					</nav>
+						<a href="/docs">Docs</a>
+						<a href="/agent">Agent</a>
+						</div>
+						<div className="footer-nav-col">
+							<span className="footer-nav-label">Connect</span>
+							<a
+								href="https://github.com/drewsephski/squido"
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								GitHub
+							</a>
+							<a
+								href="https://github.com/drewsephski/squido/issues"
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								Issues
+							</a>
+						</div>
+					</div>
 				</div>
 				<div className="footer-bottom">
 					<p className="footer-copy">
 						&copy; {new Date().getFullYear()} Drew Sepeczi
 					</p>
+					<div className="footer-legal">
+						<a
+							href="https://github.com/drewsephski/squido/blob/main/LICENSE"
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							MIT License
+						</a>
+					</div>
 				</div>
 			</div>
 		</footer>
-	);
+	)
 }

@@ -39,3 +39,8 @@ todo.md
 plans/
 
 nul
+# Deepwork progress files
+.slim/deepwork/
+# Wrangler dev state
+.wrangler/
+api/.wrangler/
