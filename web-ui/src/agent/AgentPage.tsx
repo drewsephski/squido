@@ -5,6 +5,7 @@ import { ChatInput } from "./ChatInput.tsx";
 import { StatusBar } from "./StatusBar.tsx";
 import { SessionSidebar } from "./SessionSidebar.tsx";
 import { ConnectScreen } from "./ConnectScreen.tsx";
+import { ContextPanel, type ApiModel } from "./ContextPanel.tsx";
 import "./agent.css";
 
 const WS_URL = `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/ws`;
@@ -61,6 +62,10 @@ export function AgentPage() {
 	const [isStreaming, setIsStreaming] = useState(false);
 	const [sidebarOpen, setSidebarOpen] = useState(true);
 	const [thinkingOpen, setThinkingOpen] = useState(false);
+	const [contextPanelOpen, setContextPanelOpen] = useState(false);
+	const [availableModels, setAvailableModels] = useState<ApiModel[]>([]);
+	const [modelsLoading, setModelsLoading] = useState(false);
+	const [modelsError, setModelsError] = useState<string | null>(null);
 	const thinkingRef = useRef<HTMLDivElement>(null);
 	const streamingMsgId = useRef<string | null>(null);
 	const promptQueueRef = useRef<string[]>([]);
@@ -252,7 +257,14 @@ export function AgentPage() {
 
 	const handleStateChange = useCallback(() => {}, []);
 
-	const handleError = useCallback((_message: string) => {}, []);
+	const handleError = useCallback((message: string) => {
+		const errorMsg: DisplayMessage = {
+			id: uid(),
+			role: "assistant",
+			content: `**Error:** ${message}`,
+		};
+		setMessages((prev) => [...prev, errorMsg]);
+	}, []);
 
 	const handleSessionHistory = useCallback((history: WebSessionMessage[]) => {
 		setMessages(sessionHistoryToDisplay(history));
@@ -287,6 +299,29 @@ export function AgentPage() {
 		return () => document.removeEventListener("mousedown", handler);
 	}, [thinkingOpen]);
 
+	// Fetch available models from REST API when connected
+	useEffect(() => {
+		if (status !== "connected") return;
+		let cancelled = false;
+		setModelsLoading(true);
+		setModelsError(null);
+		fetch("/api/models")
+			.then((r) => r.json())
+			.then((data) => {
+				if (!cancelled) {
+					setAvailableModels(data.models ?? []);
+					setModelsLoading(false);
+				}
+			})
+			.catch((err) => {
+				if (!cancelled) {
+					setModelsError(err.message ?? "Failed to load models");
+					setModelsLoading(false);
+				}
+			});
+		return () => { cancelled = true; };
+	}, [status]);
+
 	const handleSend = useCallback(
 		(text: string) => {
 			const cmd = text.split(" ")[0].toLowerCase();
@@ -298,11 +333,15 @@ export function AgentPage() {
 					return;
 
 				case "/model": {
+					setContextPanelOpen(true);
+					const count = availableModels.length;
 					const hint: DisplayMessage = {
 						id: uid(),
 						role: "assistant",
 						content:
-							"Run `/model` in your terminal to change the active model. The web UI uses whatever model is configured in the CLI session.",
+							count > 0
+								? `${count} model${count === 1 ? "" : "s"} available. Use the picker in the context panel (now open) to switch models.`
+								: "No models available. Configure API keys for at least one provider to enable model switching.",
 					};
 					setMessages((prev) => [...prev, hint]);
 					return;
@@ -347,11 +386,11 @@ export function AgentPage() {
 						"| Command | Description |",
 						"|---------|-------------|",
 						"| `/clear` | Clear chat history |",
-						"| `/model` | Model management hint |",
+						"| `/model` | Open model picker |",
 						"| `/think <level>` | Set thinking level (off, low, medium, high) |",
 						"| `/session` | Show session details |",
 						"| `/help` | Show this help |",
-						"\nModel and provider management is handled via the CLI. Sessions can be switched using the sidebar.",
+						"\nSwitch models via the context panel picker. Sessions can be switched using the sidebar.",
 					].join("\n");
 					const helpMsg: DisplayMessage = {
 						id: uid(),
@@ -382,7 +421,7 @@ export function AgentPage() {
 			setMessages((prev) => [...prev, userMsg]);
 			send({ type: "prompt", text });
 		},
-		[send, state],
+		[send, state, availableModels],
 	);
 
 	const handlePromptClick = useCallback(
@@ -408,6 +447,13 @@ export function AgentPage() {
 		(level: string) => {
 			send({ type: "set_thinking", level });
 			setThinkingOpen(false);
+		},
+		[send],
+	);
+
+	const handleSetModel = useCallback(
+		(provider: string, modelId: string) => {
+			send({ type: "set_model", provider, modelId });
 		},
 		[send],
 	);
@@ -521,9 +567,18 @@ export function AgentPage() {
 					)}
 
 					{isConnected && state?.model && (
-						<span className="agent-topbar-model-hint" title={`${state.model.provider}/${state.model.id} — use /model in terminal to change`}>
+						<button
+							onClick={() => setContextPanelOpen(!contextPanelOpen)}
+							className={`agent-context-toggle${contextPanelOpen ? " open" : ""}`}
+							aria-label={contextPanelOpen ? "Close context panel" : "Open context panel"}
+							title="Model settings & context"
+						>
+							<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+								<circle cx="12" cy="12" r="10" />
+								<path d="M12 6v6l4 2" />
+							</svg>
 							{state.model.id}
-						</span>
+						</button>
 					)}
 				</div>
 			</div>
@@ -547,7 +602,9 @@ export function AgentPage() {
 					<ChatMessages messages={messages} onPrompt={handlePromptClick} />
 					<ChatInput
 						onSend={handleSend}
-						disabled={status !== "connected" || isStreaming}
+						onCancel={() => send({ type: "abort" })}
+						disabled={status !== "connected"}
+						isStreaming={isStreaming}
 						placeholder={
 							status === "connected"
 								? isStreaming
@@ -557,6 +614,20 @@ export function AgentPage() {
 									? "Connecting..."
 									: "Connect to start..."
 						}
+					/>
+				</div>
+
+				{/* Right panel — Context / Model */}
+				<div className={`agent-context-panel${contextPanelOpen ? "" : " collapsed"}`}>
+					<ContextPanel
+						status={status}
+						state={state}
+						onSetThinking={handleSetThinking}
+						onSetModel={handleSetModel}
+						effectiveModel={state?.model ?? null}
+						availableModels={availableModels}
+						modelsLoading={modelsLoading}
+						modelsError={modelsError}
 					/>
 				</div>
 			</div>

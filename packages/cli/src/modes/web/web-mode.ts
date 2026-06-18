@@ -40,7 +40,7 @@ export async function runWebMode(runtime: AgentSessionRuntime, options: WebModeO
 		getModels: () => {
 			const registry = runtime.session.modelRegistry;
 			registry.refresh();
-			return registry.getAll().map((m) => ({
+			return registry.getAvailable().map((m) => ({
 				provider: m.provider,
 				id: m.id,
 				name: m.name,

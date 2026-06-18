@@ -6209,7 +6209,7 @@ export class InteractiveMode {
 				getModels: () => {
 					const registry = this.session.modelRegistry;
 					registry.refresh();
-					return registry.getAll().map((m) => ({
+					return registry.getAvailable().map((m) => ({
 						provider: m.provider,
 						id: m.id,
 						name: m.name,
