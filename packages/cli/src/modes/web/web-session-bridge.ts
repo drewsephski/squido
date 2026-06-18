@@ -25,6 +25,44 @@ type SessionListFn = () => Promise<
 >;
 
 /**
+ * Extract plain text from message content that may be a string or ContentBlock[].
+ */
+function extractContentText(content: unknown): string {
+	if (typeof content === "string") return content;
+	if (Array.isArray(content)) {
+		return content
+			.filter((block: any) => block?.type === "text")
+			.map((block: any) => (typeof block.text === "string" ? block.text : ""))
+			.join("\n");
+	}
+	return "";
+}
+
+/**
+ * Extract a display string from a model value that may be `string` or `{provider, id}`.
+ */
+function extractModelString(model: unknown): string | undefined {
+	if (!model) return undefined;
+	if (typeof model === "string") return model;
+	if (typeof model === "object" && model !== null) {
+		const m = model as { provider?: string; id?: string };
+		return m.id ? `${m.provider ?? ""}/${m.id}` : undefined;
+	}
+	return undefined;
+}
+
+/**
+ * Extract thinking blocks from assistant message content.
+ */
+function extractThinkingBlocks(content: unknown): string[] {
+	if (!Array.isArray(content)) return [];
+	return content
+		.filter((block: any) => block?.type === "thinking" && block?.thinking)
+		.map((block: any) => (typeof block.thinking === "string" ? block.thinking : ""))
+		.filter(Boolean);
+}
+
+/**
  * Bridge one WebSocket connection to an AgentSession.
  *
  * Two construction forms:
@@ -301,11 +339,11 @@ export class WebSessionBridge {
 		const messages: WebSessionMessage[] = [];
 		for (const msg of this.session.messages) {
 			if (msg.role === "user" || msg.role === "assistant") {
-				const content = typeof msg.content === "string" ? msg.content : "";
 				messages.push({
 					role: msg.role,
-					content,
-					model: msg.role === "assistant" ? String(msg.model ?? "") : undefined,
+					content: extractContentText(msg.content),
+					model: msg.role === "assistant" ? extractModelString((msg as any).model) : undefined,
+					thinking: msg.role === "assistant" ? extractThinkingBlocks(msg.content) : undefined,
 				});
 			}
 		}

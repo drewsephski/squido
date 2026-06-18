@@ -18,6 +18,7 @@ export interface WebSessionMessage {
 	role: "user" | "assistant" | "tool";
 	content: string;
 	model?: string;
+	thinking?: string[];
 }
 
 export interface WebSessionState {

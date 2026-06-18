@@ -51,6 +51,8 @@ function sessionHistoryToDisplay(history: WebSessionMessage[]): DisplayMessage[]
 		id: uid(),
 		role: msg.role,
 		content: msg.content,
+		model: msg.model,
+		thinking: msg.thinking,
 	}));
 }
 
