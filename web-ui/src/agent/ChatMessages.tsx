@@ -40,22 +40,20 @@ export function ChatMessages({ messages, onPrompt }: ChatMessagesProps) {
 	if (messages.length === 0) {
 		return (
 			<div className="agent-empty">
-				<div className="agent-empty-terminal">
+				<div className="agent-empty-brand-wrapper">
 					<div className="agent-empty-brand">squido</div>
-				</div>
-				<p className="agent-empty-sub">
-					Connect and direct Squido to work on your codebase
-				</p>
-				<div className="agent-empty-chips">
-					{EXAMPLE_PROMPTS.map((p) => (
-						<button
-							key={p}
-							onClick={() => onPrompt?.(p)}
-							className="agent-empty-chip"
-						>
-							{p}
-						</button>
-					))}
+					<div className="agent-empty-chips">
+						{EXAMPLE_PROMPTS.map((p) => (
+							<button
+								key={p}
+								onClick={() => onPrompt?.(p)}
+								className="agent-empty-chip"
+							>
+								<span className="agent-chip-prefix">$</span>
+								<span>{p}</span>
+							</button>
+						))}
+					</div>
 				</div>
 			</div>
 		);

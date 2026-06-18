@@ -285,12 +285,12 @@ export function SessionSidebar({
 
 			<button className="agent-sessions-new" onClick={onNewSession}>
 				<svg
-					width="12"
-					height="12"
+					width="14"
+					height="14"
 					viewBox="0 0 24 24"
 					fill="none"
 					stroke="currentColor"
-					strokeWidth="2"
+					strokeWidth="2.5"
 					strokeLinecap="round"
 				>
 					<line x1="12" y1="5" x2="12" y2="19" />
@@ -298,6 +298,27 @@ export function SessionSidebar({
 				</svg>
 				New session
 			</button>
+
+			{state && (
+				<div className="agent-sessions-footer">
+					<div className="agent-sessions-footer-line">
+						<span className="agent-sessions-footer-label">workspace</span>
+						<span className="agent-sessions-footer-value">{state.cwd || "\u2014"}</span>
+					</div>
+					<div className="agent-sessions-footer-line">
+						<span className="agent-sessions-footer-label">model</span>
+						<span className="agent-sessions-footer-value">{state.model ? `${state.model.provider}/${state.model.id}` : "\u2014"}</span>
+					</div>
+					<div className="agent-sessions-footer-line">
+						<span className="agent-sessions-footer-label">session</span>
+						<span className="agent-sessions-footer-value" title={state.sessionId}>{state.sessionId.slice(0, 10)}\u2026</span>
+					</div>
+					<div className="agent-sessions-footer-line">
+						<span className="agent-sessions-footer-label">agent</span>
+						<span className="agent-sessions-footer-value">v0.2.1</span>
+					</div>
+				</div>
+			)}
 
 			{/* Context menu portal */}
 			{menuOpen && (

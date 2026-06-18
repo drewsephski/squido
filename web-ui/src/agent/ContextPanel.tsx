@@ -13,7 +13,7 @@ interface ContextPanelProps {
 	modelsError: string | null;
 }
 
-interface ApiModel {
+export interface ApiModel {
 	provider: string;
 	id: string;
 	name?: string;

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { CodeBlock } from "./CodeBlock.tsx";
 
 interface ToolData {
 	toolCallId: string;
@@ -115,7 +116,17 @@ export function MessageBubble({ role, content, thinking, toolCalls, streaming, m
 								<pre className="agent-msg-content-text">{content}</pre>
 							) : (
 								<div className="message-markdown">
-									<ReactMarkdown remarkPlugins={[remarkGfm]}>
+									<ReactMarkdown
+										remarkPlugins={[remarkGfm]}
+										components={{
+											code({ className, children, ...props }) {
+												if (className) {
+													return <CodeBlock className={className}>{String(children)}</CodeBlock>;
+												}
+												return <code className={props.node?.properties?.className as string}>{children}</code>;
+											},
+										}}
+									>
 										{content}
 									</ReactMarkdown>
 								</div>

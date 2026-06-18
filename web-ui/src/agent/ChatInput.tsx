@@ -10,11 +10,13 @@ const SLASH_COMMANDS = [
 
 interface ChatInputProps {
 	onSend: (text: string) => void;
+	onCancel?: () => void;
 	disabled?: boolean;
+	isStreaming?: boolean;
 	placeholder?: string;
 }
 
-export function ChatInput({ onSend, disabled, placeholder = "Type a message..." }: ChatInputProps) {
+export function ChatInput({ onSend, onCancel, disabled, isStreaming, placeholder = "Type a message..." }: ChatInputProps) {
 	const [value, setValue] = useState("");
 	const [showCommands, setShowCommands] = useState(false);
 	const [selectedIndex, setSelectedIndex] = useState(0);
@@ -154,18 +156,31 @@ export function ChatInput({ onSend, disabled, placeholder = "Type a message..." 
 					className="agent-chat-input"
 					aria-label="Chat input"
 				/>
-				{/* Send button — sits inside the textarea visual boundary */}
-				<button
-					onClick={submit}
-					disabled={disabled || !value.trim()}
-					className="agent-send-btn"
-					aria-label="Send message"
-				>
-					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-						<line x1="22" y1="2" x2="11" y2="13" />
-						<polygon points="22 2 15 22 11 13 2 9 22 2" />
-					</svg>
-				</button>
+				{/* Action button — send or stop */}
+				{isStreaming && onCancel ? (
+					<button
+						onClick={onCancel}
+						className="agent-stop-btn"
+						aria-label="Stop generation"
+						title="Stop generation"
+					>
+						<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+							<rect x="6" y="6" width="12" height="12" rx="1" />
+						</svg>
+					</button>
+				) : (
+					<button
+						onClick={submit}
+						disabled={disabled || !value.trim()}
+						className="agent-send-btn"
+						aria-label="Send message"
+					>
+						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+							<line x1="22" y1="2" x2="11" y2="13" />
+							<polygon points="22 2 15 22 11 13 2 9 22 2" />
+						</svg>
+					</button>
+				)}
 			</div>
 		</div>
 	);
