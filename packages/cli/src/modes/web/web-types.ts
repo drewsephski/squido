@@ -25,7 +25,8 @@ export type WebClientMessage =
 	| { type: "list_sessions" }
 	| { type: "load_session"; sessionPath: string }
 	| { type: "new_session" }
-	| { type: "rename_session"; name: string };
+	| { type: "rename_session"; name: string }
+	| { type: "delete_session"; sessionPath: string };
 
 // ============================================================================
 // Server -> Client messages

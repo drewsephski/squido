@@ -440,6 +440,18 @@ export function AgentPage() {
 		[status, send],
 	);
 
+	const handleDeleteSession = useCallback(
+		(sessionPath: string) => {
+			if (status !== "connected") return;
+			// If deleting the active session, clear messages locally
+			if (state?.sessionFile === sessionPath) {
+				setMessages([]);
+			}
+			send({ type: "delete_session", sessionPath });
+		},
+		[status, send, state?.sessionFile],
+	);
+
 	const isConnected = status === "connected";
 	const currentThinking = state?.thinkingLevel ?? "off";
 
@@ -525,6 +537,7 @@ export function AgentPage() {
 						onNewSession={handleNewSession}
 						onSelectSession={handleSelectSession}
 						onRenameSession={handleRenameSession}
+						onDeleteSession={handleDeleteSession}
 					/>
 				</div>
 

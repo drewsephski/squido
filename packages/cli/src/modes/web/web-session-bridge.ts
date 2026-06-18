@@ -7,9 +7,11 @@
  * when paired with an AgentSessionRuntime.
  */
 
+import { unlinkSync } from "node:fs";
 import type { WebSocket } from "ws";
 import { AgentSession } from "../../core/agent-session.ts";
 import type { AgentSessionRuntime } from "../../core/agent-session-runtime.ts";
+import { resolvePath } from "../../utils/paths.ts";
 import type { WebClientMessage, WebServerMessage, WebSessionMessage, WebSessionState } from "./web-types.ts";
 
 type SessionListFn = () => Promise<
@@ -230,6 +232,11 @@ export class WebSessionBridge {
 				case "rename_session":
 					this.renameCurrentSession(message.name);
 					break;
+
+				case "delete_session":
+					await this.deleteSession(message.sessionPath);
+					this.sendSessionList();
+					break;
 			}
 		} catch (error) {
 			this.sendError(`Command failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -300,6 +307,36 @@ export class WebSessionBridge {
 		this.sendMessage({ type: "session_renamed", name: trimmed });
 		this.sendState();
 		this.sendSessionList();
+	}
+
+	private async deleteSession(sessionPath: string): Promise<void> {
+		const resolvedPath = resolvePath(sessionPath);
+		const currentFile = this.session.sessionFile;
+		const isCurrentSession = currentFile !== undefined && resolvedPath === resolvePath(currentFile);
+
+		if (isCurrentSession && this.runtime) {
+			// Deleting the active session — switch to a new session first
+			const result = await this.runtime.newSession();
+			if (result.cancelled) {
+				this.sendError("Session deletion was cancelled");
+				return;
+			}
+			this.sendHistory();
+			this.sendState();
+		}
+
+		try {
+			unlinkSync(resolvedPath);
+		} catch (error: unknown) {
+			const errno = (error as NodeJS.ErrnoException).code;
+			if (errno === "ENOENT") {
+				// File already gone — just refresh the list
+				return;
+			}
+			console.error(`Failed to delete session file ${resolvedPath}:`, error);
+			this.sendError("Failed to delete session file");
+			return;
+		}
 	}
 
 	private getState(): WebSessionState {
