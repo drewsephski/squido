@@ -132,14 +132,17 @@ export class WebSessionBridge {
 			switch (message.type) {
 				case "prompt":
 					await this.session.prompt(message.text, { images: message.images });
+					this.sendSessionList();
 					break;
 
 				case "steer":
 					await this.session.steer(message.text, message.images);
+					this.sendSessionList();
 					break;
 
 				case "follow_up":
 					await this.session.followUp(message.text, message.images);
+					this.sendSessionList();
 					break;
 
 				case "abort":
@@ -175,6 +178,7 @@ export class WebSessionBridge {
 
 				case "load_session":
 					await this.loadSession(message.sessionPath);
+					this.sendSessionList();
 					break;
 
 				case "new_session":
@@ -251,6 +255,7 @@ export class WebSessionBridge {
 		this.session.sessionManager.appendSessionInfo(trimmed);
 		this.sendMessage({ type: "session_renamed", name: trimmed });
 		this.sendState();
+		this.sendSessionList();
 	}
 
 	private getState(): WebSessionState {
