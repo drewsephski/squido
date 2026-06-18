@@ -885,6 +885,15 @@ export class SessionManager {
 		return this.persist;
 	}
 
+	/** Eagerly persist in-memory entries to disk so this session appears in file-based listings. */
+	flush(): void {
+		if (!this.persist || !this.sessionFile) return;
+		if (!this.flushed) {
+			this._rewriteFile();
+			this.flushed = true;
+		}
+	}
+
 	getCwd(): string {
 		return this.cwd;
 	}

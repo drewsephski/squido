@@ -281,6 +281,7 @@ export class WebSessionBridge {
 			this.sendError("New session was cancelled");
 			return;
 		}
+		this.session.sessionManager.flush();
 		this.sendSessionList();
 	}
 

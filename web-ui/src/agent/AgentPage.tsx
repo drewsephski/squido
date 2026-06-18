@@ -294,7 +294,7 @@ export function AgentPage() {
 
 			switch (cmd) {
 				case "/clear":
-					setMessages([]);
+					handleNewSession();
 					return;
 
 				case "/model": {
