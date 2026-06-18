@@ -76,6 +76,7 @@ export class WebSessionBridge {
 	private unsubscribe: (() => void) | null = null;
 	private closed = false;
 	private listSessions: SessionListFn | null;
+	private _unbindRebind: (() => void) | null = null;
 
 	constructor(ws: WebSocket, session: AgentSession);
 	constructor(ws: WebSocket, runtime: AgentSessionRuntime, listSessions: SessionListFn);
@@ -91,7 +92,7 @@ export class WebSessionBridge {
 			// Full mode: AgentSessionRuntime with session switching support
 			this.runtime = sessionOrRuntime;
 			this.session = sessionOrRuntime.session;
-			this.runtime.setRebindSession(async (newSession: AgentSession) => {
+			this._unbindRebind = this.runtime.setRebindSession(async (newSession: AgentSession) => {
 				this.rebind(newSession);
 			});
 		}
@@ -101,9 +102,8 @@ export class WebSessionBridge {
 		// Send initial state
 		this.sendState();
 
-		// Send session list and history (if available)
+		// Send session list (if available)
 		this.sendSessionList();
-		this.sendHistory();
 
 		// Subscribe to agent events
 		this.unsubscribe = this.session.subscribe((event: any) => {
@@ -157,6 +157,10 @@ export class WebSessionBridge {
 		if (this.unsubscribe) {
 			this.unsubscribe();
 			this.unsubscribe = null;
+		}
+		if (this._unbindRebind) {
+			this._unbindRebind();
+			this._unbindRebind = null;
 		}
 		try {
 			this.ws.close();

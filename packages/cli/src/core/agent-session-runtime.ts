@@ -72,7 +72,7 @@ function extractUserMessageText(content: string | Array<{ type: string; text?: s
  * caller. The caller is responsible for user-facing error handling.
  */
 export class AgentSessionRuntime {
-	private rebindSession?: (session: AgentSession) => Promise<void>;
+	private rebindSessions: Array<(session: AgentSession) => Promise<void>> = [];
 	private beforeSessionInvalidate?: () => void;
 	private _session: AgentSession;
 	private _services: AgentSessionServices;
@@ -114,8 +114,13 @@ export class AgentSessionRuntime {
 		return this._modelFallbackMessage;
 	}
 
-	setRebindSession(rebindSession?: (session: AgentSession) => Promise<void>): void {
-		this.rebindSession = rebindSession;
+	setRebindSession(rebindSession?: (session: AgentSession) => Promise<void>): () => void {
+		if (!rebindSession) return () => {};
+		this.rebindSessions.push(rebindSession);
+		return () => {
+			const idx = this.rebindSessions.indexOf(rebindSession);
+			if (idx >= 0) this.rebindSessions.splice(idx, 1);
+		};
 	}
 
 	/**
@@ -182,8 +187,8 @@ export class AgentSessionRuntime {
 	}
 
 	private async finishSessionReplacement(withSession?: (ctx: ReplacedSessionContext) => Promise<void>): Promise<void> {
-		if (this.rebindSession) {
-			await this.rebindSession(this.session);
+		for (const rebind of this.rebindSessions) {
+			await rebind(this.session);
 		}
 		if (withSession) {
 			await withSession(this.session.createReplacedSessionContext());

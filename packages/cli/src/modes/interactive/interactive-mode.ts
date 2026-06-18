@@ -6225,7 +6225,18 @@ export class InteractiveMode {
 
 			// Bridge new WebSocket connections to the agent session
 			wsServer.on("connection", (ws) => {
-				const bridge = new WebSessionBridge(ws, this.session);
+				const bridge = new WebSessionBridge(ws, this.runtimeHost, async () => {
+					const sessions = await SessionManager.listAll();
+					return sessions.map((s) => ({
+						path: s.path,
+						id: s.id,
+						name: s.name,
+						cwd: s.cwd,
+						messageCount: s.messageCount,
+						created: s.created,
+						modified: s.modified,
+					}));
+				});
 				bridge.attach();
 			});
 
